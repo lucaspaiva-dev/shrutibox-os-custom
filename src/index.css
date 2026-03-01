@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* Panel frontal del shrutibox: textura de madera con gradientes */
+/* Panel frontal del shrutibox: textura de madera */
 .shrutibox-body {
   background:
     linear-gradient(135deg, rgba(120, 80, 40, 0.15) 0%, transparent 50%),
@@ -15,32 +15,89 @@
     0 4px 16px rgba(0, 0, 0, 0.4);
 }
 
-/* Lengueta base */
+/* Ranura/abertura debajo de la lengueta */
+.shrutibox-slot {
+  background: linear-gradient(180deg, #050302 0%, #150e08 100%);
+  border-radius: 2px;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.9);
+}
+
+/* Lengueta — forma capsula color marfil */
 .shrutibox-reed {
+  background: linear-gradient(180deg,
+    #f0e8db 0%,
+    #ebe3d4 25%,
+    #e5dccc 50%,
+    #dfd5c3 75%,
+    #d9cfba 100%
+  );
+  border-radius: 7px;
+  border: 1px solid rgba(180, 165, 140, 0.4);
   box-shadow:
-    inset 0 1px 2px rgba(255, 255, 255, 0.06),
-    inset 0 -1px 2px rgba(0, 0, 0, 0.2),
-    0 2px 4px rgba(0, 0, 0, 0.3);
+    inset 0 1px 3px rgba(255, 255, 255, 0.4),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.06),
+    0 2px 6px rgba(0, 0, 0, 0.25),
+    0 1px 2px rgba(0, 0, 0, 0.15);
+  transition: transform 0.25s ease-out, box-shadow 0.25s ease-out;
 }
 
-/* Lengueta abierta (seleccionada) */
+.shrutibox-reed:active {
+  filter: brightness(0.95);
+}
+
+/* Pivote superior — lenguetas shuddh (cuelgan hacia abajo) */
+.shrutibox-reed-down {
+  transform-origin: 50% 22%;
+}
+
+/* Pivote inferior — lenguetas komal/tivra (se extienden hacia arriba) */
+.shrutibox-reed-up {
+  transform-origin: 50% 78%;
+}
+
+/* Lengueta activada — rotada revelando la ranura */
 .shrutibox-reed-open {
+  transform: rotate(14deg);
   box-shadow:
-    inset 0 1px 2px rgba(255, 255, 255, 0.1),
-    0 4px 8px rgba(180, 130, 40, 0.2),
-    0 2px 4px rgba(0, 0, 0, 0.2);
+    inset 0 1px 2px rgba(255, 255, 255, 0.35),
+    0 3px 8px rgba(0, 0, 0, 0.2),
+    0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-/* Lengueta sonando: animacion de vibracion sutil */
-.shrutibox-reed-sounding {
-  animation: reed-vibrate 0.15s ease-in-out infinite alternate;
+/* Tornillo de la lengueta */
+.shrutibox-screw {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 32%,
+    #ccc5b5 0%,
+    #a8a090 35%,
+    #908878 70%,
+    #787068 100%
+  );
   box-shadow:
-    inset 0 1px 3px rgba(255, 255, 255, 0.15),
-    0 4px 12px rgba(245, 180, 50, 0.35),
-    0 2px 4px rgba(0, 0, 0, 0.15);
+    inset 0 1px 1px rgba(255, 255, 255, 0.3),
+    inset 0 -0.5px 0.5px rgba(0, 0, 0, 0.15),
+    0 1px 2px rgba(0, 0, 0, 0.25);
+  position: relative;
+  flex-shrink: 0;
 }
 
-@keyframes reed-vibrate {
-  0% { transform: translateY(-8px) rotate(-0.3deg); }
-  100% { transform: translateY(-8px) rotate(0.3deg); }
+/* Ranura del tornillo (estilo slot/plano) */
+.shrutibox-screw::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 18%;
+  right: 18%;
+  height: 1.5px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(0, 0, 0, 0.35) 20%,
+    rgba(0, 0, 0, 0.4) 50%,
+    rgba(0, 0, 0, 0.35) 80%,
+    transparent 100%
+  );
+  transform: translateY(-50%) rotate(-25deg);
+  border-radius: 1px;
 }

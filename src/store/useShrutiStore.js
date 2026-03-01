@@ -39,6 +39,9 @@ const useShrutiStore = create((set, get) => ({
   /** @type {number} Multiplicador de velocidad del envelope. */
   speed: 1.0,
 
+  /** @type {'minimalist'|'didactic'} Modo de visualizacion de las lenguetas. */
+  viewMode: localStorage.getItem('shrutibox-viewMode') || 'minimalist',
+
   /**
    * Inicializa el motor de audio del instrumento activo.
    * Debe llamarse tras una interaccion del usuario (requisito del navegador).
@@ -136,6 +139,16 @@ const useShrutiStore = create((set, get) => ({
   setSpeed: (speed) => {
     audioEngine.setSpeed(speed);
     set({ speed });
+  },
+
+  /**
+   * Alterna el modo de visualizacion entre minimalista y didactico.
+   */
+  toggleViewMode: () => {
+    const { viewMode } = get();
+    const next = viewMode === 'minimalist' ? 'didactic' : 'minimalist';
+    localStorage.setItem('shrutibox-viewMode', next);
+    set({ viewMode: next });
   },
 
   /**

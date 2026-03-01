@@ -8,39 +8,47 @@
 import { useCallback } from 'react';
 import useShrutiStore from './store/useShrutiStore';
 import useKeyboard from './hooks/useKeyboard';
+import useTranslation from './i18n/useTranslation';
 import Display from './components/Display';
 import NoteGrid from './components/NoteGrid';
 import Controls from './components/Controls';
+import LanguageSelector from './components/LanguageSelector';
 
 function StartScreen({ onStart }) {
+  const { t } = useTranslation();
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-amber-950 via-stone-950 to-stone-950 flex items-center justify-center p-6">
+      <div className="absolute top-4 right-4">
+        <LanguageSelector />
+      </div>
+
       <div className="text-center max-w-md space-y-8">
         <div className="space-y-3">
           <h1 className="text-4xl sm:text-5xl font-bold text-amber-100 tracking-tight">
-            Shrutibox Digital
+            {t('app.title')}
           </h1>
           <p className="text-amber-500/60 text-sm">
-            Monoj Kumar Sardar 440Hz
+            {t('app.subtitle')}
           </p>
         </div>
 
         <div className="w-24 h-px bg-gradient-to-r from-transparent via-amber-700/50 to-transparent mx-auto" />
 
         <p className="text-amber-300/50 text-sm leading-relaxed">
-          13 notas cromaticas &mdash; Sa Re Ga Ma Pa Dha Ni<br />
-          con variantes komal y tivra
+          {t('start.description')}<br />
+          {t('start.description2')}
         </p>
 
         <button
           onClick={onStart}
           className="px-10 py-5 bg-amber-500 hover:bg-amber-400 text-amber-950 font-bold text-lg rounded-2xl transition-all hover:scale-105 active:scale-95 shadow-lg shadow-amber-500/20"
         >
-          Iniciar
+          {t('start.button')}
         </button>
 
         <p className="text-amber-800/40 text-xs">
-          Se requiere interaccion para activar el audio del navegador
+          {t('start.audioNote')}
         </p>
       </div>
     </div>
@@ -49,6 +57,7 @@ function StartScreen({ onStart }) {
 
 function ShrutiboxApp() {
   useKeyboard();
+  const { t } = useTranslation();
   const reset = useShrutiStore((s) => s.reset);
 
   return (
@@ -71,8 +80,9 @@ function ShrutiboxApp() {
                 clipRule="evenodd"
               />
             </svg>
-            Inicio
+            {t('nav.home')}
           </button>
+          <LanguageSelector />
         </div>
 
         <Display />
@@ -80,7 +90,7 @@ function ShrutiboxApp() {
         <Controls />
 
         <footer className="text-center text-amber-800/30 text-xs pt-2 pb-4">
-          Shrutibox Digital &mdash; Monoj Kumar Sardar 440Hz
+          {t('footer.text')}
         </footer>
       </div>
     </div>

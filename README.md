@@ -14,6 +14,7 @@ El instrumento simula la experiencia de un shrutibox real: 13 lengüetas cromati
 - **Modificacion en tiempo real**: agrega o quita notas mientras el drone suena
 - **Control de volumen**: ajuste de 0% a 100%
 - **Teclado fisico**: mapeo estilo piano para las 13 notas + barra espaciadora para Play/Stop
+- **Multi-idioma (i18n)**: interfaz disponible en español (Argentina), portugués (Brasil) e inglés (USA), con selector en la esquina superior derecha y persistencia del idioma seleccionado en localStorage
 
 ## Stack tecnologico
 
@@ -62,7 +63,16 @@ shrutibox-os-custom/
 │   │   ├── Display.jsx         # Panel informativo (nota activa, estado)
 │   │   ├── NoteGrid.jsx        # Panel frontal del shrutibox (13 lengüetas)
 │   │   ├── NoteButton.jsx      # Lengüeta individual (toggle switch)
-│   │   └── Controls.jsx        # Instrumento, Play/Stop, volumen, velocidad
+│   │   ├── Controls.jsx        # Instrumento, Play/Stop, volumen, velocidad
+│   │   └── LanguageSelector.jsx # Selector de idioma (esquina superior derecha)
+│   ├── i18n/
+│   │   ├── locales/
+│   │   │   ├── es-AR.js        # Español de Argentina
+│   │   │   ├── pt-BR.js        # Portugués de Brasil
+│   │   │   ├── en-US.js        # Inglés de USA
+│   │   │   └── index.js        # Registro modular de locales
+│   │   ├── useLanguageStore.js  # Store Zustand con persistencia en localStorage
+│   │   └── useTranslation.js   # Hook useTranslation con t(key)
 │   ├── hooks/
 │   │   └── useKeyboard.js      # Mapeo de teclado fisico (estilo piano)
 │   └── config/
@@ -127,25 +137,113 @@ La aplicacion sigue una arquitectura de **3 capas** con separacion clara de resp
 
 > Para documentacion detallada de la arquitectura, ver [`docs/architecture.md`](docs/architecture.md).
 
-## Instalacion
+## Instrumentos virtuales
+
+La aplicacion incluye tres instrumentos activos y tres ocultos (deprecados o experimentales). Todos comparten la misma interfaz publica (`init`, `playNote`, `stopNote`, `playNotes`, `stopAll`, `setVolume`, `setSpeed`, `dispose`) y usan los mismos 13 samples MP3 grabados del shrutibox real Monoj Kumar Sardar.
+
+### Activos
+
+#### Shrutibox MKS
+
+| | |
+| --- | --- |
+| Motor | `SampleAudioManager` |
+| Fuente de audio | 13 grabaciones reales WAV convertidas a MP3 (`/sounds-mks/`) |
+| Clase Tone.js | `Tone.Player` con loop built-in |
+
+Estrategia de reproduccion: cada nota carga su propio buffer MP3 pregrabado al inicializar. Al activar una nota, crea un `Tone.Player` que reproduce el buffer en loop continuo con `loopStart: 1.0s` y `loopEnd: 5.0s`, saltando el ataque inicial del sample y ciclando una region corta. Aplica `fadeIn` y `fadeOut` de 0.08s para suavizar los bordes. Es el instrumento por defecto y el mas liviano en recursos.
+
+**Limitacion**: al usar loop built-in, puede producir un click audible sutil en el punto donde el loop reinicia, debido a la discontinuidad en la forma de onda.
+
+#### MKS Grain
+
+| | |
+| --- | --- |
+| Motor | `GrainAudioManager` |
+| Fuente de audio | Mismos samples MKS (`/sounds-mks/`) |
+| Clase Tone.js | `Tone.GrainPlayer` con dual player cycling |
+
+Estrategia de reproduccion: usa `Tone.GrainPlayer` que descompone el audio en "granos" de 0.5s con overlap de 0.15s, produciendo un timbre mas difuso y envolvente. Para evitar el click de loop, **no usa el loop built-in**. En su lugar, implementa **dual player cycling**: antes de que el player activo llegue al final de la region (loopEnd: 23.0s), arranca un segundo player desde el inicio (loopStart: 1.0s) y ejecuta un crossfade programatico de 2.0s entre ambos. El viejo hace fade-out mientras el nuevo hace fade-in. Cuando el viejo termina, se destruye, y el ciclo se repite indefinidamente. El audio nunca alcanza el punto de corte, eliminando completamente el click.
+
+Al iniciar una nota aplica un fade-in suave de 2.5s. Cada player se conecta a su propio nodo `Tone.Gain` individual para controlar los crossfades de forma independiente.
+
+#### Shrutibox MKS Realistic
+
+| | |
+| --- | --- |
+| Motor | `RealisticGrainAudioManager` |
+| Fuente de audio | Mismos samples MKS (`/sounds-mks/`) |
+| Clase Tone.js | `Tone.GrainPlayer` con dual player cycling + bellows stagger |
+
+Estrategia de reproduccion: extiende la logica de MKS Grain (dual player cycling, crossfade programatico) y anade simulacion del comportamiento fisico del fuelle del shrutibox real. Cuando se activan multiples notas simultaneamente, las lenguetas graves comienzan a sonar primero y las agudas entran progresivamente, replicando como el aire tarda mas en hacer vibrar lenguetas mas pequenas.
+
+Diferencias tecnicas respecto a MKS Grain:
+
+- **Bellows stagger**: al reproducir multiples notas, las ordena de grave a agudo y aplica un delay de 90ms por semitono de distancia desde la nota mas grave
+- **Fade-in escalado**: el fade-in inicial (2.5s base) crece un +4% por cada semitono, asi las notas agudas alcanzan volumen pleno ligeramente mas tarde
+- **Ciclo asimetrico**: los ciclos de sostenimiento arrancan desde `cycleStart: 5.0s` (zona estable del drone, no desde el inicio), con un crossfade mas largo (4.0s). El viejo player espera 3.0s antes de iniciar su fade-out de 2.0s, garantizando que el nuevo ya este casi al 100% antes de que el viejo baje
+
+### Ocultos (deprecados / experimentales)
+
+Estos instrumentos estan comentados en `instruments.js` y no aparecen en la UI, pero el codigo de sus motores sigue disponible:
+
+| Instrumento | Motor | Descripcion |
+| --- | --- | --- |
+| Base Sound | `AudioManager` | Sintesis en tiempo real con `PolySynth` (oscilador `fatsine`, 3 voces con spread de 12). No usa samples, genera el sonido matematicamente. |
+| Shrutibox Prototype | `SampleAudioManager` (`/sounds/`) | Samples generados por pitch-shifting de un unico WAV fuente. Calidad inferior a las grabaciones reales. |
+| MKS Crossfade | `SampleAudioManager` (`/sounds-mks-xfade/`) | Samples MKS con crossfade baked-in directamente en el archivo de audio (la cola se mezcla con el inicio). Usa loop completo (`loopStart: 0`, `loopEnd: null`). |
+
+## Requisitos previos
+
+- [Node.js](https://nodejs.org/) v18 o superior (incluye npm)
+- [ffmpeg](https://ffmpeg.org/) (solo si quieres usar los instrumentos basados en samples)
+
+En macOS con Homebrew:
+
+```bash
+brew install node    # si no tienes Node.js
+brew install ffmpeg  # opcional, para generar samples
+```
+
+## Instalacion (primera vez)
+
+1. Abre una terminal en la carpeta raiz del proyecto (`shrutibox-os-custom/`).
+
+2. Instala las dependencias:
 
 ```bash
 npm install
 ```
 
-O usando el script de instalacion automatizada:
+Esto descarga los paquetes necesarios en `node_modules/`. Solo necesitas hacerlo una vez, salvo que clones el proyecto de nuevo, alguien agregue una dependencia a `package.json`, o borres `node_modules/`.
+
+3. (Opcional) Genera los samples de audio para los instrumentos basados en samples. Requiere **ffmpeg**:
 
 ```bash
-bash scripts/install.sh
+bash scripts/generate-samples.sh            # Shrutibox Prototype (13 samples interpolados)
+bash scripts/generate-mks-samples.sh        # Shrutibox MKS (13 grabaciones reales)
+bash scripts/generate-mks-xfade-samples.sh  # MKS Crossfade (13 samples con loop suave)
 ```
 
-## Desarrollo
+Sin este paso solo funcionan **Base Sound** (sintesis) y **MKS Grain**. MKS Grain usa los mismos samples que Shrutibox MKS, asi que ejecutar `generate-mks-samples.sh` habilita ambos.
+
+4. Inicia el servidor de desarrollo:
 
 ```bash
 npm run dev
 ```
 
-Abre **http://localhost:5173** en el navegador.
+5. Abre **http://localhost:5173** en el navegador. La app deberia estar funcionando.
+
+## Uso recurrente
+
+Cada vez que quieras usar o trabajar en el proyecto, solo ejecuta:
+
+```bash
+npm run dev
+```
+
+No hace falta reinstalar dependencias. Cuando termines, presiona **Ctrl + C** en la terminal para detener el servidor.
 
 ## Build de produccion
 
@@ -240,6 +338,28 @@ Toma los samples MKS y genera versiones con crossfade integrado en el audio: la 
 ```
 
 S = shuddh (natural), K = komal (bemol), T = tivra (sostenido)
+
+## Multi-idioma (i18n)
+
+La interfaz soporta multiples idiomas con un sistema modular y liviano integrado con Zustand:
+
+| Idioma    | Codigo | Referencia          |
+| --------- | ------ | ------------------- |
+| Español   | es-AR  | Argentina           |
+| Portugués | pt-BR  | Brasil              |
+| Inglés    | en-US  | Estados Unidos      |
+
+El selector de idioma aparece en la esquina superior derecha, tanto en la pantalla de inicio como en el instrumento. El idioma seleccionado se guarda en `localStorage` y se restaura automaticamente en la proxima visita.
+
+### Agregar un nuevo idioma
+
+1. Crear un archivo en `src/i18n/locales/` (ej: `fr-FR.js`) exportando un objeto con `id`, `label`, `name` y `translations` (usar cualquier locale existente como referencia)
+2. Importar y agregar el nuevo locale al array `LOCALES` en `src/i18n/locales/index.js`
+
+### Quitar un idioma
+
+1. Eliminar el archivo del locale en `src/i18n/locales/`
+2. Remover el import y la entrada del array `LOCALES` en `src/i18n/locales/index.js`
 
 ## Feature flags
 

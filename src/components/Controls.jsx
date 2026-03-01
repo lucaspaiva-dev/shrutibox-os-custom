@@ -13,6 +13,7 @@
 import useShrutiStore from '../store/useShrutiStore';
 import { FEATURE_FLAGS } from '../config/featureFlags';
 import { INSTRUMENTS } from '../audio/instruments';
+import useTranslation from '../i18n/useTranslation';
 
 export default function Controls() {
   const volume = useShrutiStore((s) => s.volume);
@@ -24,6 +25,7 @@ export default function Controls() {
   const selectedNotes = useShrutiStore((s) => s.selectedNotes);
   const instrumentId = useShrutiStore((s) => s.instrumentId);
   const setInstrument = useShrutiStore((s) => s.setInstrument);
+  const { t } = useTranslation();
 
   return (
     <div className="bg-amber-950/60 backdrop-blur-sm rounded-2xl border border-amber-800/40 p-5 space-y-5">
@@ -31,7 +33,7 @@ export default function Controls() {
       {FEATURE_FLAGS.ENABLE_INSTRUMENT_SELECTOR && (
         <div className="space-y-2">
           <label className="text-xs text-amber-400/70 uppercase tracking-wider font-medium block">
-            Instrumento
+            {t('controls.instrument')}
           </label>
           <div className="flex gap-2">
             {INSTRUMENTS.map((inst) => (
@@ -89,11 +91,11 @@ export default function Controls() {
           )}
         </button>
         <span className="text-xs text-amber-400/70 uppercase tracking-wider font-medium">
-          {playing ? 'Reproduciendo' : 'Play'}
+          {playing ? t('controls.playing') : t('controls.play')}
           {!playing && selectedNotes.length > 0 && (
             <span className="text-amber-500/50 normal-case">
               {' '}
-              ({selectedNotes.length} {selectedNotes.length === 1 ? 'nota' : 'notas'})
+              ({selectedNotes.length} {selectedNotes.length === 1 ? t('controls.note') : t('controls.notes')})
             </span>
           )}
         </span>
@@ -105,7 +107,7 @@ export default function Controls() {
       <div className="space-y-2">
         <div className="flex justify-between items-center">
           <label className="text-xs text-amber-400/70 uppercase tracking-wider font-medium">
-            Volumen
+            {t('controls.volume')}
           </label>
           <span className="text-xs text-amber-500 font-mono">
             {Math.round(volume * 100)}%
@@ -127,7 +129,7 @@ export default function Controls() {
         <div className="space-y-2">
           <div className="flex justify-between items-center">
             <label className="text-xs text-amber-400/70 uppercase tracking-wider font-medium">
-              Velocidad
+              {t('controls.speed')}
             </label>
             <span className="text-xs text-amber-500 font-mono">
               {speed.toFixed(1)}x
@@ -144,6 +146,7 @@ export default function Controls() {
           />
         </div>
       )}
+
     </div>
   );
 }
