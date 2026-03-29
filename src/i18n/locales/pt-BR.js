@@ -32,5 +32,8 @@ export default {
     'chorus.label': 'Ativar efeito chorus',
     'footer.text': 'Shrutibox Digital — Monoj Kumar Sardar 440Hz',
     'footer.author': 'Desenvolvido por',
+    'theme.toggle': 'Alternar tema',
+    'theme.dark': 'Tema escuro',
+    'theme.light': 'Tema claro',
   },
 };

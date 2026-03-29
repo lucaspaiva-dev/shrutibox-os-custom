@@ -15,6 +15,7 @@ El instrumento simula la experiencia de un shrutibox real: 13 lengüetas cromati
 - **Control de volumen**: ajuste de 0% a 100%
 - **Teclado fisico**: mapeo estilo piano para las 13 notas + barra espaciadora para Play/Stop
 - **Multi-idioma (i18n)**: interfaz disponible en español (Argentina), portugués (Brasil) e inglés (USA), con selector en la esquina superior derecha y persistencia del idioma seleccionado en localStorage
+- **Skins temáticos**: dos temas visuales (Madera Oscura y Madera Clara) con sistema modular y extensible. Toggle intuitivo sol/luna en la esquina superior derecha. Persistencia en localStorage
 
 ## Stack tecnologico
 
@@ -62,13 +63,20 @@ shrutibox-os-custom/
 │   │   ├── AccordionPadAudioManager.js # Motor granular para Acordion Pad FX
 │   │   └── noteMap.js          # 13 notas cromaticas (Sargam + komal/tivra)
 │   ├── store/
-│   │   └── useShrutiStore.js   # Store Zustand (estado + acciones)
+│   │   ├── useShrutiStore.js   # Store Zustand (estado del instrumento)
+│   │   └── useThemeStore.js    # Store Zustand (skin activo, persistido)
+│   ├── skins/
+│   │   ├── index.js            # Registro de skins: SKINS[], SKINS_BY_ID
+│   │   ├── skinEngine.js       # Motor: aplica CSS vars en :root
+│   │   ├── darkWood.js         # Skin "Madera Oscura" (default)
+│   │   └── lightWood.js        # Skin "Madera Clara"
 │   ├── components/
 │   │   ├── Display.jsx         # Panel informativo (nota activa, estado)
 │   │   ├── NoteGrid.jsx        # Panel frontal del shrutibox (13 lengüetas)
 │   │   ├── NoteButton.jsx      # Lengüeta individual (toggle switch)
 │   │   ├── Controls.jsx        # Instrumento, Play/Stop, volumen, velocidad
-│   │   └── LanguageSelector.jsx # Selector de idioma (esquina superior derecha)
+│   │   ├── LanguageSelector.jsx # Selector de idioma (esquina superior derecha)
+│   │   └── SkinSelector.jsx    # Toggle de tema (sol/luna)
 │   ├── i18n/
 │   │   ├── locales/
 │   │   │   ├── es-AR.js        # Español de Argentina
@@ -379,6 +387,29 @@ El selector de idioma aparece en la esquina superior derecha, tanto en la pantal
 
 1. Eliminar el archivo del locale en `src/i18n/locales/`
 2. Remover el import y la entrada del array `LOCALES` en `src/i18n/locales/index.js`
+
+## Skins / Temas
+
+La interfaz soporta multiples skins (temas visuales) con un sistema modular basado en CSS custom properties. Cada skin define ~34 variables que controlan todos los colores de la app: fondos, textos, acentos, panel de madera, lenguetas, tornillos, bordes y estados.
+
+### Skins disponibles
+
+| Skin | ID | Inspiracion |
+| --- | --- | --- |
+| Madera Oscura | `dark-wood` | Palisandro/sheesham del MKS original. Fondos profundos ambar/piedra, texto claro |
+| Madera Clara | `light-wood` | Arce/abedul (maple/birch). Tonos miel y crema calido, texto oscuro |
+
+El selector de skin aparece en la esquina superior derecha (icono luna/sol), tanto en la pantalla de inicio como en el instrumento. El skin seleccionado se guarda en `localStorage` y se restaura automaticamente.
+
+### Agregar un nuevo skin
+
+1. Crear un archivo en `src/skins/` (ej: `vintageWood.js`) exportando un objeto con `id`, `name`, `preview`, `meta` y `cssVars` (usar cualquier skin existente como referencia)
+2. Importar y agregar el nuevo skin al array `SKINS` en `src/skins/index.js`
+
+### Quitar un skin
+
+1. Eliminar el archivo del skin en `src/skins/`
+2. Remover el import y la entrada del array `SKINS` en `src/skins/index.js`
 
 ## Feature flags
 
