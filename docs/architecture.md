@@ -27,11 +27,12 @@ src/
 │
 ├── audio/
 │   ├── audioEngine.js            # Proxy mutable: delega al motor de audio activo
-│   ├── instruments.js            # Registro de instrumentos disponibles (MKS Drone, MKS Realistic)
+│   ├── instruments.js            # Registro de instrumentos disponibles (MKS Drone, MKS Realistic, Acordion Pad FX)
 │   ├── AudioManager.js           # Motor de sintesis (PolySynth fatsine) — oculto
 │   ├── SampleAudioManager.js     # Motor de samples (Tone.Player con loop) — oculto
 │   ├── GrainAudioManager.js      # Motor granular (dual player cycling con crossfade) — MKS Drone
 │   ├── RealisticGrainAudioManager.js  # GrainAudioManager + bellows stagger — MKS Realistic
+│   ├── AccordionPadAudioManager.js    # Motor granular para pad de acordeon — Acordion Pad FX
 │   └── noteMap.js                # 13 notas cromaticas (Sargam + komal/tivra)
 │
 ├── store/
@@ -85,7 +86,8 @@ La aplicacion sigue una separacion clara en tres capas:
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │                    CAPA DE AUDIO (Tone.js)                                    │
 │                    audioEngine.js (Proxy mutable)                             │
-│                    instruments.js (Registro: MKS Drone, MKS Realistic)        │
+│                    instruments.js (Registro: MKS Drone, MKS Realistic,       │
+│                                    Acordion Pad FX)                          │
 │                                                                              │
 │   ┌─────────────────────────────┐ ┌──────────────────────────────────┐       │
 │   │   GrainAudioManager         │ │   RealisticGrainAudioManager      │       │
@@ -96,6 +98,13 @@ La aplicacion sigue una separacion clara en tres capas:
 │   │   crossfade 2.0s            │ │   + bellows stagger (90ms/semi)   │       │
 │   └──────────────┬──────────────┘ └──────────────────┬───────────────┘       │
 │                  └─────────────────────┬──────────────┘                       │
+│                                        │                                      │
+│   ┌────────────────────────────────────┴──────────────────────────────┐       │
+│   │   AccordionPadAudioManager (Acordion Pad FX — activo)             │       │
+│   │   /sounds-accordion-pad/  (pitch-shifted desde WAV unico)         │       │
+│   │   Tone.GrainPlayer, dual player cycling, granos 0.8s             │       │
+│   └──────────────────────────────┬────────────────────────────────────┘       │
+│                                  │                                            │
 │                                        ▼                                      │
 │                                 Tone.Volume (-6dB)                            │
 │                                        ▼                                      │
@@ -123,7 +132,7 @@ Componentes que renderizan la UI y capturan interacciones:
   - *Mango derecho*: botón Play/Stop circular + slider de volumen vertical (fader físico).
   - Los mangos imitan los mangos de fuelle del instrumento acústico real MKS.
 - **NoteButton** — lengüeta toggle con estados visual: cerrada (no seleccionada) y abierta/rotada (seleccionada). En modo didáctico muestra nombre Sargam y equivalente occidental.
-- **Controls** — barra compacta con selector de instrumento (MKS Drone / MKS Realistic). Play/Stop y Volumen fueron movidos a NoteGrid en v2.
+- **Controls** — barra compacta con selector de instrumento (MKS Drone / MKS Realistic / Acordion Pad FX). Play/Stop y Volumen fueron movidos a NoteGrid en v2.
 - **Display** — [DEPRECADO v2] su lógica fue inlinada en NoteGrid.jsx.
 
 ### 2. Estado (Zustand)
@@ -145,7 +154,7 @@ Acciones principales: `init()`, `setInstrument(id)`, `toggleNote(noteId)`, `togg
 
 ### 3. Audio (Tone.js)
 
-La capa de audio ofrece dos motores activos e intercambiables a traves del proxy mutable `audioEngine.js`:
+La capa de audio ofrece tres motores activos e intercambiables a traves del proxy mutable `audioEngine.js`:
 
 **MKS Drone** (`GrainAudioManager` — dual player granular con crossfade):
 - Motor activo por defecto (ID: `mks-grain`).
@@ -163,12 +172,21 @@ La capa de audio ofrece dos motores activos e intercambiables a traves del proxy
 - Bellows release: al detener el drone, las notas agudas se apagan primero.
 - Ver [`docs/realistic-engine.md`](realistic-engine.md) para documentacion detallada.
 
+**Acordion Pad FX** (`AccordionPadAudioManager` — dual player granular optimizado para pad):
+- Motor activo (ID: `accordion-pad`).
+- Usa la misma tecnica de dual player cycling que MKS Drone, pero con parametros calibrados para un sample tipo pad con modulacion de filtro.
+- Los 13 samples se generan por pitch-shifting offline desde un unico WAV fuente: "Accordion pad1.wav" de juskiddink ([Freesound #120931](https://freesound.org/people/juskiddink/sounds/120931/), CC-BY 4.0).
+- Granos mas largos (`grainSize: 0.8s` vs 0.5s) y mayor overlap (`0.25` vs `0.15`) para preservar la textura del pad.
+- Region de reproduccion: `loopStart: 0.5s`, `loopEnd: 20.0s` (aprovecha el ataque musical del acordeon).
+- Crossfade de 3.0s y fade-in inicial de 3.5s para un efecto "swell" mas pronunciado.
+- Las instancias se crean en `instruments.js` con `basePath='/sounds-accordion-pad'`.
+
 Todos los motores activos:
 - Exponen la misma interfaz publica: `init()`, `playNote()`, `stopNote()`, `playNotes()`, `stopAll()`, `setVolume()`, `setSpeed()`, `setChorusEnabled(bool)`, `dispose()`.
 - Se enrutan a un nodo `Tone.Volume` maestro (-6dB) seguido de un `Tone.Chorus` (ver abajo).
-- Las instancias se crean en `instruments.js` con `basePath='/sounds-mks'`.
+- Las instancias se crean en `instruments.js` con su respectivo `basePath`.
 
-**Efecto Chorus** (ambos motores granulares):
+**Efecto Chorus** (todos los motores granulares):
 - Nodo `Tone.Chorus` insertado entre `Volume` y `Destination`: `Volume → Chorus → Destination`.
 - Parametros: `frequency: 0.4 Hz`, `delayTime: 2.5ms`, `depth: 0.15`, `spread: 0`.
 - Arranca **desactivado** (`wet: 0`). Se activa via `setChorusEnabled(true)` que sube `wet` a `0.3`.
@@ -215,7 +233,7 @@ Imagen de referencia: `assets/shrutibox-frontal-mks-709df372-1768-4a8b-b639-4861
 │ │  ·············································   │  separador dec.
 │ └────────────────────────────────────────────┘   │
 ├──────────────────────────────────────────────────┤
-│  Instrumento: [ MKS Drone ] [ MKS Realistic ]    │  barra compacta
+│  Instrumento: [MKS Drone] [MKS Realistic] [Pad FX]│  barra compacta
 ├──────────────────────────────────────────────────┤
 │            créditos / footer                     │
 └──────────────────────────────────────────────────┘
@@ -313,7 +331,7 @@ El hook `useKeyboard` conecta el teclado fisico con la app:
 - **Toggle-then-play**: las notas se seleccionan antes de reproducir; el drone suena con todas las notas seleccionadas simultaneamente.
 - **Modificacion en tiempo real**: se pueden agregar o quitar notas durante la reproduccion sin interrumpir el drone.
 - **Instrumentos intercambiables**: `audioEngine.js` actua como proxy mutable, delegando al motor del instrumento seleccionado por el usuario.
-- **Instancias de audio**: `AudioManager` exporta un singleton. `SampleAudioManager` y `GrainAudioManager` exportan clases para permitir multiples instancias con distintos `basePath` y opciones. Las instancias se crean en `instruments.js`. El proxy `audioEngine` es singleton.
+- **Instancias de audio**: `AudioManager` exporta un singleton. `SampleAudioManager`, `GrainAudioManager` y `AccordionPadAudioManager` exportan clases para permitir multiples instancias con distintos `basePath` y opciones. Las instancias se crean en `instruments.js`. El proxy `audioEngine` es singleton.
 - **Inicializacion por interaccion**: el navegador requiere un gesto del usuario para iniciar el `AudioContext`; el `StartScreen` cumple este requisito.
 - **Zustand reactivo**: los componentes se suscriben solo a las porciones del store que necesitan, evitando re-renders innecesarios.
 
