@@ -41,10 +41,10 @@ export default function NoteButton({ note }) {
         <div className={`flex flex-col items-center transition-all duration-300 overflow-hidden ${
           isDidactic ? 'opacity-100 max-h-10 mb-0.5' : 'opacity-0 max-h-0'
         }`}>
-          <span className="text-[9px] sm:text-[11px] text-amber-300/90 font-semibold leading-none">
+          <span className="text-[9px] sm:text-[11px] text-sb-text-mid font-semibold leading-none">
             {note.name}
           </span>
-          <span className="text-[7px] sm:text-[8px] text-amber-600/50 leading-none mt-0.5">
+          <span className="text-[7px] sm:text-[8px] text-sb-text-faint/80 leading-none mt-0.5">
             {note.western}
           </span>
         </div>
@@ -75,10 +75,10 @@ export default function NoteButton({ note }) {
         <div className={`flex flex-col items-center transition-all duration-300 overflow-hidden ${
           isDidactic ? 'opacity-100 max-h-10 mt-0.5' : 'opacity-0 max-h-0'
         }`}>
-          <span className="text-[9px] sm:text-[11px] text-amber-300/90 font-semibold leading-none">
+          <span className="text-[9px] sm:text-[11px] text-sb-text-mid font-semibold leading-none">
             {note.name}{variantSymbol}
           </span>
-          <span className="text-[7px] sm:text-[8px] text-amber-600/50 leading-none mt-0.5">
+          <span className="text-[7px] sm:text-[8px] text-sb-text-faint/80 leading-none mt-0.5">
             {note.western}
           </span>
         </div>

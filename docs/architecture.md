@@ -36,13 +36,21 @@ src/
 │   └── noteMap.js                # 13 notas cromaticas (Sargam + komal/tivra)
 │
 ├── store/
-│   └── useShrutiStore.js         # Store global (Zustand)
+│   ├── useShrutiStore.js         # Store global del instrumento (Zustand)
+│   └── useThemeStore.js          # Store de tema/skin (Zustand, persistido en localStorage)
+│
+├── skins/
+│   ├── index.js                  # Registro central: SKINS[], SKINS_BY_ID, DEFAULT_SKIN_ID
+│   ├── skinEngine.js             # Motor: aplica CSS custom properties en :root
+│   ├── darkWood.js               # Skin "Madera Oscura" (palisandro/sheesham)
+│   └── lightWood.js              # Skin "Madera Clara" (arce/abedul)
 │
 ├── components/
 │   ├── Display.jsx               # [DEPRECADO v2] — lógica migrada a NoteGrid.jsx
 │   ├── NoteGrid.jsx              # Panel principal unificado (visor + lengüetas + mangos)
 │   ├── NoteButton.jsx            # Lengüeta individual (toggle switch)
-│   └── Controls.jsx              # Barra compacta: solo selector de instrumento
+│   ├── Controls.jsx              # Barra compacta: solo selector de instrumento
+│   └── SkinSelector.jsx          # Toggle de tema sol/luna
 │
 ├── hooks/
 │   └── useKeyboard.js            # Mapeo de teclado fisico (estilo piano, 13 notas)
@@ -137,7 +145,9 @@ Componentes que renderizan la UI y capturan interacciones:
 
 ### 2. Estado (Zustand)
 
-Store centralizado con estado reactivo:
+Dos stores centralizados con estado reactivo:
+
+**useShrutiStore** — estado del instrumento:
 
 | Estado          | Tipo       | Persistencia       | Descripcion                          |
 | --------------- | ---------- | ------------------ | ------------------------------------ |
@@ -151,6 +161,14 @@ Store centralizado con estado reactivo:
 | `chorusEnabled` | `boolean`  | `localStorage`     | Efecto Chorus activo/inactivo        |
 
 Acciones principales: `init()`, `setInstrument(id)`, `toggleNote(noteId)`, `togglePlay()`, `setVolume()`, `setSpeed()`, `toggleViewMode()`, `toggleChorus()`, `reset()`.
+
+**useThemeStore** — estado del tema visual:
+
+| Estado   | Tipo     | Persistencia   | Descripcion              |
+| -------- | -------- | -------------- | ------------------------ |
+| `skinId` | `string` | `localStorage` | ID del skin activo       |
+
+Acciones: `setSkin(id)`, `toggleSkin()`. Al importar el modulo se aplica automaticamente el skin guardado (o el default) antes del primer render.
 
 ### 3. Audio (Tone.js)
 
@@ -209,6 +227,64 @@ Todos los motores activos:
 
 ---
 
+## Sistema de Skins
+
+La aplicacion soporta multiples skins (temas visuales) mediante CSS custom properties. Cada skin es un objeto autocontenido que define ~34 variables CSS que controlan todos los colores de la interfaz.
+
+### Arquitectura
+
+```
+src/skins/
+  darkWood.js         Skin "Madera Oscura" (default)
+  lightWood.js        Skin "Madera Clara"
+  index.js            Registro: SKINS[], SKINS_BY_ID, DEFAULT_SKIN_ID
+  skinEngine.js       applySkin(): setea vars en :root + meta theme-color
+```
+
+```
+   ┌──────────────────┐     ┌───────────────────┐
+   │ darkWood.js      │     │ lightWood.js       │
+   │ { cssVars: ... } │     │ { cssVars: ... }   │
+   └───────┬──────────┘     └────────┬───────────┘
+           └──────────┬──────────────┘
+                      ▼
+             ┌────────────────┐
+             │ skinEngine.js  │
+             │ applySkin()    │
+             └───────┬────────┘
+                     ▼
+             :root { --sb-* }
+                     │
+         ┌───────────┴───────────┐
+         ▼                       ▼
+   @theme (Tailwind v4)     index.css
+   --color-sb-* = var()     .shrutibox-body
+   → bg-sb-*, text-sb-*    .shrutibox-reed, etc.
+```
+
+### Categorias de variables CSS
+
+| Prefijo | Uso | Ejemplo |
+|---------|-----|---------|
+| `--sb-bg-*` | Fondos de la app | `--sb-bg`, `--sb-bg-deep` |
+| `--sb-text-*` | Colores de texto | `--sb-text`, `--sb-text-mid` |
+| `--sb-accent-*` | Acentos y CTAs | `--sb-accent`, `--sb-accent-hover` |
+| `--sb-body-*` | Panel de madera | `--sb-body-1`, `--sb-body-shine` |
+| `--sb-reed-*` | Lenguetas marfil | `--sb-reed-1` a `--sb-reed-5` |
+| `--sb-screw-*` | Tornillos metalicos | `--sb-screw-1` a `--sb-screw-4` |
+| `--sb-slot-*` | Ranuras | `--sb-slot-start`, `--sb-slot-end` |
+| `--sb-chrome/border/muted` | Elementos UI | Bordes, handles, separadores |
+| `--sb-play/stop/playing` | Estados de audio | Play, Stop, indicador |
+
+### Agregar un nuevo skin
+
+1. Crear archivo en `src/skins/` (ej: `vintageWood.js`) exportando un objeto con `id`, `name`, `preview`, `meta` y `cssVars`
+2. Importar y agregar al array `SKINS` en `src/skins/index.js`
+
+El `SkinSelector` se adapta automaticamente al numero de skins disponibles.
+
+---
+
 ## UI Layout v2 — Mobile-First Minimalista
 
 ### Motivación
@@ -221,7 +297,7 @@ Imagen de referencia: `assets/shrutibox-frontal-mks-709df372-1768-4a8b-b639-4861
 
 ```
 ┌──────────────────────────────────────────────────┐
-│  ← Inicio                        ES  PT  EN      │  header (sin cambios)
+│  ← Inicio                    ☾/☀  ES  PT  EN    │  header + skin toggle
 ├──────────────────────────────────────────────────┤
 │ ┌────────────────────────────────────────────┐   │
 │ │  [visor: Sa · Re♭ · Ma  ●Sonando]          │   │  visor integrado
@@ -263,6 +339,9 @@ Imagen de referencia: `assets/shrutibox-frontal-mks-709df372-1768-4a8b-b639-4861
 | `viewMode.title` | Notas | Notas | Notes |
 | `chorus.title` | FX | FX | FX |
 | `chorus.label` | Activar efecto de coro | Ativar efeito chorus | Enable chorus effect |
+| `theme.toggle` | Cambiar tema | Alternar tema | Toggle theme |
+| `theme.dark` | Tema oscuro | Tema escuro | Dark theme |
+| `theme.light` | Tema claro | Tema claro | Light theme |
 
 ---
 
