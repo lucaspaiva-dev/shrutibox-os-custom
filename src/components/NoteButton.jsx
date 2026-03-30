@@ -19,9 +19,6 @@ export default function NoteButton({ note }) {
   const isAltered = note.variant === 'komal' || note.variant === 'tivra';
   const isDidactic = viewMode === 'didactic';
 
-  const variantSymbol =
-    note.variant === 'komal' ? '♭' : note.variant === 'tivra' ? '♯' : '';
-
   const handleClick = useCallback(
     (e) => {
       e.preventDefault();
@@ -42,10 +39,7 @@ export default function NoteButton({ note }) {
           isDidactic ? 'opacity-100 max-h-10 mb-0.5' : 'opacity-0 max-h-0'
         }`}>
           <span className="text-[9px] sm:text-[11px] text-sb-text-mid font-semibold leading-none">
-            {note.name}
-          </span>
-          <span className="text-[7px] sm:text-[8px] text-sb-text-faint/80 leading-none mt-0.5">
-            {note.western}
+            {note.western.replace(/\d+$/, '')}
           </span>
         </div>
       )}
@@ -57,7 +51,7 @@ export default function NoteButton({ note }) {
         className={`relative cursor-pointer select-none touch-none w-7 sm:w-9 ${
           isAltered ? 'h-20 sm:h-24' : 'h-24 sm:h-28'
         }`}
-        aria-label={`${note.name}${variantSymbol} ${note.western}`}
+        aria-label={note.western}
       >
         {/* Ranura oscura */}
         <div className="shrutibox-slot absolute inset-x-0.5 inset-y-1" />
@@ -76,10 +70,7 @@ export default function NoteButton({ note }) {
           isDidactic ? 'opacity-100 max-h-10 mt-0.5' : 'opacity-0 max-h-0'
         }`}>
           <span className="text-[9px] sm:text-[11px] text-sb-text-mid font-semibold leading-none">
-            {note.name}{variantSymbol}
-          </span>
-          <span className="text-[7px] sm:text-[8px] text-sb-text-faint/80 leading-none mt-0.5">
-            {note.western}
+            {note.western.replace(/\d+$/, '')}
           </span>
         </div>
       )}
