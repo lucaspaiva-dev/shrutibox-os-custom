@@ -19,7 +19,7 @@ export default function SkinSelector() {
   return (
     <button
       onClick={toggleSkin}
-      className="w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-300 active:scale-90 bg-sb-chrome/30 text-sb-text-faint hover:text-sb-accent hover:bg-sb-chrome/50 border border-sb-border/20"
+      className="w-10 h-10 rounded-lg flex items-center justify-center transition-[background,color,transform,box-shadow] duration-200 active:scale-90 bg-sb-chrome/30 text-sb-text-faint hover:text-sb-accent hover:bg-sb-chrome/50 border border-sb-border/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sb-focus-ring focus-visible:ring-offset-1"
       aria-label={t('theme.toggle')}
       title={isDark ? t('theme.light') : t('theme.dark')}
     >

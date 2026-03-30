@@ -22,7 +22,7 @@ export default {
   },
   cssVars: {
     '--sb-bg': '#f5e6cc',
-    '--sb-bg-deep': '#ede0cc',
+    '--sb-bg-deep': '#d4c09a',
 
     '--sb-text': '#2c1810',
     '--sb-text-mid': '#5c3315',
@@ -39,7 +39,7 @@ export default {
 
     '--sb-play': '#059669',
     '--sb-stop': '#dc2626',
-    '--sb-playing': '#059669',
+    '--sb-playing': '#16a34a',
 
     '--sb-body-1': 'hsl(35, 40%, 72%)',
     '--sb-body-2': 'hsl(33, 38%, 68%)',
@@ -65,5 +65,7 @@ export default {
     '--sb-screw-4': '#807870',
 
     '--sb-slider-accent': '#9a4408',
+
+    '--sb-focus-ring': '#9a4408',
   },
 };

@@ -5,7 +5,7 @@ export default {
   translations: {
     'app.title': 'Shrutibox Digital',
     'app.subtitle': 'Monoj Kumar Sardar 440Hz',
-    'start.description': '13 chromatic notes — Sa Re Ga Ma Pa Dha Ni',
+    'start.description': '13 chromatic notes — C D E F G A B',
     'start.description2': 'with komal and tivra variants',
     'start.button': 'Start',
     'start.audioNote': 'User interaction is required to activate browser audio',
@@ -35,5 +35,12 @@ export default {
     'theme.toggle': 'Toggle theme',
     'theme.dark': 'Dark theme',
     'theme.light': 'Light theme',
+    'metronome.label': 'Metronome',
+    'metronome.title': 'Metronome',
+    'metronome.beats': 'Beats',
+    'metronome.bpm': 'BPM',
+    'metronome.play': 'Start metronome',
+    'metronome.stop': 'Stop metronome',
+    'metronome.accent': 'Accent beat',
   },
 };

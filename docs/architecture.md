@@ -28,6 +28,7 @@ src/
 ├── audio/
 │   ├── audioEngine.js            # Proxy mutable: delega al motor de audio activo
 │   ├── instruments.js            # Registro de instrumentos disponibles (MKS Drone, MKS Realistic, Acordion Pad FX)
+│   ├── metronomeEngine.js        # Motor de audio del metrónomo (Tone.Synth + Transport)
 │   ├── AudioManager.js           # Motor de sintesis (PolySynth fatsine) — oculto
 │   ├── SampleAudioManager.js     # Motor de samples (Tone.Player con loop) — oculto
 │   ├── GrainAudioManager.js      # Motor granular (dual player cycling con crossfade) — MKS Drone
@@ -37,6 +38,7 @@ src/
 │
 ├── store/
 │   ├── useShrutiStore.js         # Store global del instrumento (Zustand)
+│   ├── useMetronomeStore.js      # Store del metrónomo (Zustand, BPM/beats/accents persistidos)
 │   └── useThemeStore.js          # Store de tema/skin (Zustand, persistido en localStorage)
 │
 ├── skins/
@@ -47,8 +49,9 @@ src/
 │
 ├── components/
 │   ├── Display.jsx               # [DEPRECADO v2] — lógica migrada a NoteGrid.jsx
-│   ├── NoteGrid.jsx              # Panel principal unificado (visor + lengüetas + mangos)
+│   ├── NoteGrid.jsx              # Panel principal unificado (visor + lengüetas + mangos + metrónomo toggle)
 │   ├── NoteButton.jsx            # Lengüeta individual (toggle switch)
+│   ├── MetronomePanel.jsx        # Panel de controles del metrónomo (beats, BPM, play/stop)
 │   ├── Controls.jsx              # Barra compacta: solo selector de instrumento
 │   └── SkinSelector.jsx          # Toggle de tema sol/luna
 │
@@ -413,6 +416,45 @@ El hook `useKeyboard` conecta el teclado fisico con la app:
 - **Instancias de audio**: `AudioManager` exporta un singleton. `SampleAudioManager`, `GrainAudioManager` y `AccordionPadAudioManager` exportan clases para permitir multiples instancias con distintos `basePath` y opciones. Las instancias se crean en `instruments.js`. El proxy `audioEngine` es singleton.
 - **Inicializacion por interaccion**: el navegador requiere un gesto del usuario para iniciar el `AudioContext`; el `StartScreen` cumple este requisito.
 - **Zustand reactivo**: los componentes se suscriben solo a las porciones del store que necesitan, evitando re-renders innecesarios.
+
+---
+
+---
+
+## Metrónomo
+
+El metrónomo es una funcionalidad secundaria que sigue la misma arquitectura de 3 capas del proyecto, con módulos independientes que no interfieren con el drone del shrutibox.
+
+Ver [docs/metronome.md](metronome.md) para documentación completa.
+
+### Componentes del metrónomo
+
+| Archivo | Rol |
+|---------|-----|
+| `src/audio/metronomeEngine.js` | Motor de audio: `Tone.Synth` + `Tone.Transport`, dos tonos (acento/normal), scheduling preciso, callback `onBeat()` |
+| `src/store/useMetronomeStore.js` | Store Zustand: `enabled`, `playing`, `bpm`, `beats`, `accents`, `currentBeat`; BPM/beats/accents persistidos en `localStorage` |
+| `src/components/MetronomePanel.jsx` | Panel expandible: casilleros de beats con toggle de acento, control BPM con repetición al mantener presionado, botón play/stop |
+| `src/components/NoteGrid.jsx` | Integra el ícono de toggle del metrónomo en el visor de notas y el render condicional de `MetronomePanel` |
+
+### Flujo
+
+```
+NoteGrid (ícono toggle)
+    ↓ toggleEnabled()
+useMetronomeStore
+    ↓ start(bpm, beats, accents)
+metronomeEngine
+    ↓ Tone.Transport.scheduleRepeat('4n')
+Tone.Synth → Tone.Volume → Speaker
+    ↓ onBeat(index) → Tone.getDraw()
+useMetronomeStore.currentBeat → MetronomePanel (feedback visual)
+```
+
+### Notas de implementación
+
+- El `Tone.Transport` del metrónomo no interfiere con los motores de drone porque estos usan scheduling manual propio (dual player cycling), no Transport.
+- El canal de audio del metrónomo (`Tone.Volume` propio) es independiente del nodo maestro del drone, permitiendo reproducción simultánea.
+- `Tone.getDraw().schedule()` sincroniza la actualización visual del beat activo con el frame de render de React, evitando desincronía entre audio y UI.
 
 ---
 

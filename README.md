@@ -14,6 +14,7 @@ El instrumento simula la experiencia de un shrutibox real: 13 lengüetas cromati
 - **Modificacion en tiempo real**: agrega o quita notas mientras el drone suena
 - **Control de volumen**: ajuste de 0% a 100%
 - **Teclado fisico**: mapeo estilo piano para las 13 notas + barra espaciadora para Play/Stop
+- **Metrónomo integrado**: metrónomo de precisión con control de BPM (20-240), compases de 1 a 8 beats, beats acentuados configurables y feedback visual en tiempo real. Funciona simultáneamente con el drone. Activable desde el ícono en el visor de notas
 - **Multi-idioma (i18n)**: interfaz disponible en español (Argentina), portugués (Brasil) e inglés (USA), con selector en la esquina superior derecha y persistencia del idioma seleccionado en localStorage
 - **Skins temáticos**: dos temas visuales (Madera Oscura y Madera Clara) con sistema modular y extensible. Toggle intuitivo sol/luna en la esquina superior derecha. Persistencia en localStorage
 
@@ -49,6 +50,7 @@ shrutibox-os-custom/
 │   └── install.sh              # Script de instalacion automatizada
 ├── docs/
 │   ├── architecture.md         # Documentacion completa de la arquitectura
+│   ├── metronome.md            # Documentacion del metrónomo
 │   └── getting-started.md      # Guia de inicio rapido
 ├── src/
 │   ├── main.jsx                # Punto de entrada de React

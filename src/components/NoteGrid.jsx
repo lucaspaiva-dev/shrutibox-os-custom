@@ -23,8 +23,10 @@
  */
 
 import NoteButton from './NoteButton';
+import MetronomePanel from './MetronomePanel';
 import { NOTES, NOTES_BY_ID } from '../audio/noteMap';
 import useShrutiStore from '../store/useShrutiStore';
+import useMetronomeStore from '../store/useMetronomeStore';
 import useTranslation from '../i18n/useTranslation';
 
 /** Orden cromático de las notas para ordenar el visor. */
@@ -43,6 +45,9 @@ export default function NoteGrid() {
   const volume        = useShrutiStore((s) => s.volume);
   const setVolume     = useShrutiStore((s) => s.setVolume);
 
+  const metronomeEnabled  = useMetronomeStore((s) => s.enabled);
+  const toggleMetronome   = useMetronomeStore((s) => s.toggleEnabled);
+
   const isDidactic = viewMode === 'didactic';
 
   /** Hasta 3 notas activas ordenadas cromáticamente para el visor. */
@@ -54,55 +59,79 @@ export default function NoteGrid() {
   return (
     <div className="shrutibox-body rounded-2xl border-2 border-sb-chrome/60 overflow-hidden">
 
-      {/* ── Visor de notas — altura fija para evitar saltos de layout ──────── */}
+      {/* ── Visor — altura fija, zona izquierda metrónomo + zona derecha notas ── */}
       <div className="px-3 sm:px-4 pt-3 pb-2">
-        <div className="h-[72px] sm:h-[80px] flex flex-col items-center justify-center gap-1">
+        <div className="h-[72px] sm:h-[80px] flex items-center gap-2 sm:gap-3">
 
-          {/* Fila 1 — notas activas o placeholder */}
-          <div className="h-8 sm:h-9 flex items-center justify-center">
-            {displayNotes.length > 0 ? (
-              <div className="text-2xl sm:text-3xl font-bold text-sb-text leading-none">
-                {displayNotes.map((note, i) => (
-                  <span key={note.id}>
-                    {i > 0 && (
-                      <span className="text-base sm:text-xl text-sb-text-faint/50 mx-1">·</span>
-                    )}
-                    <span>{note.name}</span>
-                    {(note.variant === 'komal' || note.variant === 'tivra') && (
-                      <span className="text-sm sm:text-base text-sb-text-mid/80">
-                        {note.variant === 'komal' ? '♭' : '♯'}
-                      </span>
-                    )}
-                  </span>
-                ))}
-              </div>
-            ) : (
-              <div className="text-sb-text-faint/70 text-xs sm:text-sm italic tracking-wide">
-                {t('display.selectNote')}
+          {/* LEFT: zona metrónomo — icono toggle siempre presente + controles cuando activo */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              onClick={toggleMetronome}
+              className={`
+                shrink-0 w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center
+                transition-all duration-300 active:scale-90
+                ${metronomeEnabled
+                  ? 'bg-sb-accent/20 text-sb-accent border border-sb-accent/40 shadow-sm shadow-sb-accent/10'
+                  : 'bg-sb-neutral/60 text-sb-text-faint/60 border border-sb-neutral/40'
+                }
+              `}
+              aria-label={t('metronome.label')}
+              aria-pressed={metronomeEnabled}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 sm:w-5 sm:h-5">
+                <path d="M8 20 L10.5 4 L13.5 4 L16 20 Z" />
+                <line x1="12" y1="5" x2="16" y2="13" />
+                <circle cx="16.2" cy="13.5" r="1.3" fill="currentColor" stroke="none" />
+              </svg>
+            </button>
+
+            {metronomeEnabled && (
+              <div className="min-w-0">
+                <MetronomePanel />
               </div>
             )}
           </div>
 
-          {/* Fila 2 — contador de notas (siempre reserva espacio) */}
-          <div className="h-[14px] flex items-center justify-center">
-            {selectedNotes.length > 0 && (
-              <span className="text-sb-text-faint/70 text-[10px]">
-                {selectedNotes.length}{' '}
-                {selectedNotes.length === 1
-                  ? t('display.noteActive')
-                  : t('display.notesActive')}
-              </span>
-            )}
-          </div>
+          {/* Separador vertical */}
+          <div className="h-10 w-px bg-sb-border/30 shrink-0" />
 
-          {/* Fila 3 — indicador "Tocando" (siempre reserva espacio) */}
-          <div className="h-[14px] flex items-center justify-center">
-            {playing && (
-              <span className="flex items-center gap-1 text-[9px] text-sb-playing">
-                <span className="w-1 h-1 bg-sb-playing rounded-full animate-pulse" />
-                {t('display.playing')}
-              </span>
-            )}
+          {/* RIGHT: visor de notas — siempre visible */}
+          <div className="flex-1 min-w-0 flex flex-col items-center justify-center gap-1">
+            <div className="flex items-center justify-center">
+              {displayNotes.length > 0 ? (
+                <div className="text-2xl sm:text-3xl font-bold text-sb-text leading-none">
+                  {displayNotes.map((note, i) => (
+                    <span key={note.id}>
+                      {i > 0 && (
+                        <span className="text-base sm:text-xl text-sb-text-faint/50 mx-1">·</span>
+                      )}
+                      <span>{note.western.replace(/\d+$/, '')}</span>
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-sb-text-faint/70 text-xs sm:text-sm italic tracking-wide">
+                  {t('display.selectNote')}
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-center gap-2 h-[14px]">
+              {selectedNotes.length > 0 && (
+                <span className="text-sb-text-faint/70 text-[10px]">
+                  {selectedNotes.length}{' '}
+                  {selectedNotes.length === 1
+                    ? t('display.noteActive')
+                    : t('display.notesActive')}
+                </span>
+              )}
+              {playing && (
+                <span className="flex items-center gap-1 text-[9px] text-sb-playing">
+                  <span className="w-1 h-1 bg-sb-playing rounded-full animate-pulse" />
+                  {t('display.playing')}
+                </span>
+              )}
+            </div>
           </div>
 
         </div>

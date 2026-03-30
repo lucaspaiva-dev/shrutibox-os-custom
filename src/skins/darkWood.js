@@ -65,5 +65,7 @@ export default {
     '--sb-screw-4': '#787068',
 
     '--sb-slider-accent': '#e8930a',
+
+    '--sb-focus-ring': '#e8930a',
   },
 };
