@@ -18,8 +18,8 @@ class AudioManager {
     /** @type {Map<string, Tone.PolySynth>} Synths activos indexados por noteId. */
     this.activeSynths = new Map();
 
-    /** @type {Tone.Volume} Nodo de volumen maestro conectado a la salida. */
-    this.volume = new Tone.Volume(-6).toDestination();
+    /** @type {Tone.Volume|null} Nodo de volumen maestro conectado a la salida. */
+    this.volume = null;
 
     /** @type {number} Tiempo de ataque del envelope en segundos. */
     this.attackTime = 0.08;
@@ -35,6 +35,7 @@ class AudioManager {
   async init() {
     if (this.initialized) return;
     await Tone.start();
+    this.volume = new Tone.Volume(-6).toDestination();
     this.initialized = true;
   }
 
@@ -148,7 +149,8 @@ class AudioManager {
   dispose() {
     this.stopAll();
     this.activeSynths.clear();
-    this.volume.dispose();
+    this.volume?.dispose();
+    this.volume = null;
     this.initialized = false;
   }
 }

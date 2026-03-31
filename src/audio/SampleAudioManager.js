@@ -42,7 +42,7 @@ class SampleAudioManager {
     this.initialized = false;
     this.buffers = new Map();
     this.activePlayers = new Map();
-    this.volume = new Tone.Volume(-6).toDestination();
+    this.volume = null;
     this.fadeInTime = this.loopConfig.fadeIn;
     this.fadeOutTime = this.loopConfig.fadeOut;
   }
@@ -65,6 +65,7 @@ class SampleAudioManager {
   async init() {
     if (this.initialized) return;
     await Tone.start();
+    this.volume = new Tone.Volume(-6).toDestination();
 
     const loadPromises = NOTES.map(
       (note) =>
@@ -189,7 +190,8 @@ class SampleAudioManager {
       buffer.dispose();
     }
     this.buffers.clear();
-    this.volume.dispose();
+    this.volume?.dispose();
+    this.volume = null;
     this.initialized = false;
   }
 }
