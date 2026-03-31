@@ -92,14 +92,8 @@ class RealisticGrainAudioManager {
     this.fadeInTime = this.grainConfig.fadeIn;
     this.fadeOutTime = this.grainConfig.fadeOut;
 
-    this.chorus = new Tone.Chorus({
-      frequency: 0.4,
-      delayTime: 2.5,
-      depth: 0.15,
-      spread: 0,
-      wet: 0,
-    }).toDestination();
-    this.volume = new Tone.Volume(-6).connect(this.chorus);
+    this.chorus = null;
+    this.volume = null;
   }
 
   /** @private */
@@ -113,8 +107,17 @@ class RealisticGrainAudioManager {
    */
   async init() {
     if (this.initialized) return;
-    this.chorus.start();
     await Tone.start();
+
+    this.chorus = new Tone.Chorus({
+      frequency: 0.4,
+      delayTime: 2.5,
+      depth: 0.15,
+      spread: 0,
+      wet: 0,
+    }).toDestination();
+    this.chorus.start();
+    this.volume = new Tone.Volume(-6).connect(this.chorus);
 
     const loadPromises = NOTES.map(
       (note) =>
@@ -499,9 +502,11 @@ class RealisticGrainAudioManager {
       buffer.dispose();
     }
     this.buffers.clear();
-    this.volume.dispose();
-    this.chorus.stop();
-    this.chorus.dispose();
+    this.volume?.dispose();
+    this.chorus?.stop();
+    this.chorus?.dispose();
+    this.volume = null;
+    this.chorus = null;
     this.initialized = false;
   }
 }
