@@ -67,34 +67,47 @@ class AccordionPadAudioManager {
    */
   async init() {
     if (this.initialized) return;
-    await Tone.start();
+    try {
+      // Nota: el desbloqueo del AudioContext (Tone.start + silent buffer trick)
+      // ya fue realizado por unlockAudio() desde el gesto del usuario en App.jsx
+      // antes de llegar aquí. No llamar Tone.start() de nuevo para evitar
+      // condiciones de carrera en iOS con múltiples resume() simultáneos.
 
-    this.chorus = new Tone.Chorus({
-      frequency: 0.4,
-      delayTime: 2.5,
-      depth: 0.15,
-      spread: 0,
-      wet: 0,
-    }).toDestination();
-    this.chorus.start();
-    this.volume = new Tone.Volume(-6).connect(this.chorus);
+      this.chorus = new Tone.Chorus({
+        frequency: 0.4,
+        delayTime: 2.5,
+        depth: 0.15,
+        spread: 0,
+        wet: 0,
+      }).toDestination();
+      this.chorus.start();
+      this.volume = new Tone.Volume(-6).connect(this.chorus);
 
-    const loadPromises = NOTES.map(
-      (note) =>
-        new Promise((resolve, reject) => {
-          const buffer = new Tone.ToneAudioBuffer(
-            this._filePath(note),
-            () => {
-              this.buffers.set(note.id, buffer);
-              resolve();
-            },
-            reject
-          );
-        })
-    );
+      const loadPromises = NOTES.map(
+        (note) =>
+          new Promise((resolve, reject) => {
+            const buffer = new Tone.ToneAudioBuffer(
+              this._filePath(note),
+              () => {
+                this.buffers.set(note.id, buffer);
+                resolve();
+              },
+              reject
+            );
+          })
+      );
 
-    await Promise.all(loadPromises);
-    this.initialized = true;
+      await Promise.all(loadPromises);
+      this.initialized = true;
+    } catch (err) {
+      this.volume?.dispose();
+      this.chorus?.stop();
+      this.chorus?.dispose();
+      this.volume = null;
+      this.chorus = null;
+      this.buffers.clear();
+      throw err;
+    }
   }
 
   /**

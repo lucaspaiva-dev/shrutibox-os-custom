@@ -34,7 +34,10 @@ class AudioManager {
    */
   async init() {
     if (this.initialized) return;
-    await Tone.start();
+    // Nota: el desbloqueo del AudioContext (Tone.start + silent buffer trick)
+    // ya fue realizado por unlockAudio() desde el gesto del usuario en App.jsx
+    // antes de llegar aquí. No llamar Tone.start() de nuevo para evitar
+    // condiciones de carrera en iOS con múltiples resume() simultáneos.
     this.volume = new Tone.Volume(-6).toDestination();
     this.initialized = true;
   }
