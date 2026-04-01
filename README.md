@@ -7,14 +7,16 @@ El instrumento simula la experiencia de un shrutibox real: 13 lengüetas cromati
 ## Caracteristicas
 
 - **13 notas cromaticas**: Sa, Re♭, Re, Ga♭, Ga, Ma, Ma♯, Pa, Dha♭, Dha, Ni♭, Ni, Sa (agudo)
-- **Selector de instrumentos**: elige entre MKS Drone y MKS Realistic
+- **Selector de instrumentos**: elige entre MKS Drone, MKS Realistic y Acordion Pad FX
 - **UI tipo shrutibox**: panel frontal con 13 lengüetas/switches dispuestas horizontalmente
 - **Sistema Sargam**: notacion india con variantes shuddh, komal y tivra
 - **Toggle + Play/Stop**: selecciona notas con click, luego activa el drone con Play
 - **Modificacion en tiempo real**: agrega o quita notas mientras el drone suena
 - **Control de volumen**: ajuste de 0% a 100%
 - **Teclado fisico**: mapeo estilo piano para las 13 notas + barra espaciadora para Play/Stop
+- **Metrónomo integrado**: metrónomo de precisión con control de BPM (20-240), compases de 1 a 8 beats, beats acentuados configurables y feedback visual en tiempo real. Funciona simultáneamente con el drone. Activable desde el ícono en el visor de notas
 - **Multi-idioma (i18n)**: interfaz disponible en español (Argentina), portugués (Brasil) e inglés (USA), con selector en la esquina superior derecha y persistencia del idioma seleccionado en localStorage
+- **Skins temáticos**: dos temas visuales (Madera Oscura y Madera Clara) con sistema modular y extensible. Toggle intuitivo sol/luna en la esquina superior derecha. Persistencia en localStorage
 
 ## Stack tecnologico
 
@@ -35,18 +37,22 @@ shrutibox-os-custom/
 ├── public/
 │   ├── original-sounds/        # Audio fuente para generar samples
 │   │   ├── 95345__iluppai__shruti-box.wav
-│   │   └── shrutibox-MKS-first-samplers/  # Grabaciones reales del shrutibox MKS
+│   │   ├── shrutibox-MKS-first-samplers/  # Grabaciones reales del shrutibox MKS
+│   │   └── acordion-pad-c/     # Sample de acordeon pad (juskiddink, CC-BY 4.0)
 │   ├── sounds/                 # Samples interpolados - Shrutibox Prototype (gitignored)
 │   ├── sounds-mks/             # Samples reales - Shrutibox MKS y MKS Grain (gitignored)
-│   └── sounds-mks-xfade/       # Samples con crossfade baked-in - MKS Crossfade (gitignored)
+│   ├── sounds-mks-xfade/       # Samples con crossfade baked-in - MKS Crossfade (gitignored)
+│   └── sounds-accordion-pad/   # Samples pitch-shifted - Acordion Pad FX (gitignored)
 ├── scripts/
 │   ├── generate-samples.sh     # Genera 13 samples MP3 por pitch-shifting (Prototype)
 │   ├── generate-mks-samples.sh # Convierte 13 WAV a MP3 (MKS)
 │   ├── generate-mks-xfade-samples.sh # Genera MP3 con crossfade baked-in (MKS Crossfade)
+│   ├── generate-accordion-pad-samples.sh # Genera 13 samples por pitch-shifting (Acordion Pad FX)
 │   ├── generate-tones.sh       # Genera tonos sinusoidales placeholder
 │   └── install.sh              # Script de instalacion automatizada
 ├── docs/
 │   ├── architecture.md         # Documentacion completa de la arquitectura
+│   ├── metronome.md            # Documentacion del metrónomo
 │   └── getting-started.md      # Guia de inicio rapido
 ├── src/
 │   ├── main.jsx                # Punto de entrada de React
@@ -58,15 +64,23 @@ shrutibox-os-custom/
 │   │   ├── AudioManager.js     # Motor de sintesis (PolySynth fatsine)
 │   │   ├── SampleAudioManager.js # Motor de samples (Tone.Player con loop)
 │   │   ├── GrainAudioManager.js  # Motor granular con dual player cycling
+│   │   ├── AccordionPadAudioManager.js # Motor granular para Acordion Pad FX
 │   │   └── noteMap.js          # 13 notas cromaticas (Sargam + komal/tivra)
 │   ├── store/
-│   │   └── useShrutiStore.js   # Store Zustand (estado + acciones)
+│   │   ├── useShrutiStore.js   # Store Zustand (estado del instrumento)
+│   │   └── useThemeStore.js    # Store Zustand (skin activo, persistido)
+│   ├── skins/
+│   │   ├── index.js            # Registro de skins: SKINS[], SKINS_BY_ID
+│   │   ├── skinEngine.js       # Motor: aplica CSS vars en :root
+│   │   ├── darkWood.js         # Skin "Madera Oscura" (default)
+│   │   └── lightWood.js        # Skin "Madera Clara"
 │   ├── components/
 │   │   ├── Display.jsx         # Panel informativo (nota activa, estado)
 │   │   ├── NoteGrid.jsx        # Panel frontal del shrutibox (13 lengüetas)
 │   │   ├── NoteButton.jsx      # Lengüeta individual (toggle switch)
 │   │   ├── Controls.jsx        # Instrumento, Play/Stop, volumen, velocidad
-│   │   └── LanguageSelector.jsx # Selector de idioma (esquina superior derecha)
+│   │   ├── LanguageSelector.jsx # Selector de idioma (esquina superior derecha)
+│   │   └── SkinSelector.jsx    # Toggle de tema (sol/luna)
 │   ├── i18n/
 │   │   ├── locales/
 │   │   │   ├── es-AR.js        # Español de Argentina
@@ -174,6 +188,28 @@ Diferencias tecnicas respecto a MKS Drone:
 - **Ciclo asimetrico**: los ciclos de sostenimiento arrancan desde `cycleStart: 5.0s` (zona estable del drone), con un crossfade mas largo (4.0s). El viejo player espera 3.0s antes de iniciar su fade-out de 2.0s, garantizando que el nuevo ya este casi al 100% antes de que el viejo baje
 - **Bellows release**: al detener el drone, las notas agudas se apagan primero y las graves con retraso progresivo, replicando el vaciado natural del fuelle
 
+#### Acordion Pad FX
+
+
+|                 |                                                                                                       |
+| --------------- | ----------------------------------------------------------------------------------------------------- |
+| ID              | `accordion-pad`                                                                                       |
+| Motor           | `AccordionPadAudioManager`                                                                            |
+| Fuente de audio | 13 samples pitch-shifted desde un unico WAV (`/sounds-accordion-pad/`)                                |
+| Clase Tone.js   | `Tone.GrainPlayer` con dual player cycling                                                            |
+| Sample original | [juskiddink — Accordion pad1.wav](https://freesound.org/people/juskiddink/sounds/120931/) (CC-BY 4.0) |
+
+
+Estrategia de reproduccion: usa `Tone.GrainPlayer` con dual player cycling (misma tecnica que MKS Drone), pero con parametros calibrados para un sample tipo pad con modulacion de filtro. Los 13 samples se generan por pitch-shifting offline desde un unico WAV fuente (acorde de C menor de acordeon con efectos de filtro), usando el script `generate-accordion-pad-samples.sh`.
+
+Diferencias tecnicas respecto a MKS Drone:
+
+- **Granos mas largos** (`grainSize: 0.8s` vs 0.5s): preservan mejor la textura del pad y los efectos de modulacion de filtro del sample original
+- **Mayor overlap** (`overlap: 0.25` vs 0.15): transiciones mas suaves entre granos, adecuado para el caracter envolvente del sonido
+- **Region de reproduccion** (`loopStart: 0.5s`, `loopEnd: 20.0s`): aprovecha el ataque musical del acordeon y usa casi toda la duracion del sample (21.4s)
+- **Crossfade mas largo** (`crossfadeDuration: 3.0s` vs 2.0s): por el caracter sostenido del pad
+- **Fade-in mas lento** (`initialFadeIn: 3.5s` vs 2.5s): efecto "swell" mas pronunciado al iniciar una nota
+
 ### Ocultos (deprecados / experimentales)
 
 Estos instrumentos estan comentados en `instruments.js` y no aparecen en la UI, pero el codigo de sus motores sigue disponible:
@@ -216,9 +252,10 @@ Esto descarga los paquetes necesarios en `node_modules/`. Solo necesitas hacerlo
 bash scripts/generate-samples.sh            # Shrutibox Prototype (13 samples interpolados)
 bash scripts/generate-mks-samples.sh        # Shrutibox MKS (13 grabaciones reales)
 bash scripts/generate-mks-xfade-samples.sh  # MKS Crossfade (13 samples con loop suave)
+bash scripts/generate-accordion-pad-samples.sh  # Acordion Pad FX (13 samples pitch-shifted)
 ```
 
-Sin este paso solo funciona **Base Sound** (sintesis, instrumento oculto). Los instrumentos activos **MKS Drone** y **MKS Realistic** usan los samples generados por `generate-mks-samples.sh`.
+Sin este paso solo funciona **Base Sound** (sintesis, instrumento oculto). Los instrumentos activos **MKS Drone** y **MKS Realistic** usan los samples de `generate-mks-samples.sh`, y **Acordion Pad FX** usa los de `generate-accordion-pad-samples.sh`.
 
 1. Inicia el servidor de desarrollo:
 
@@ -272,6 +309,14 @@ bash scripts/generate-mks-xfade-samples.sh
 
 Toma los samples MKS y genera versiones con crossfade integrado en el audio: la cola del sample se mezcla con el inicio para que el loop sea suave. Los archivos se crean en `public/sounds-mks-xfade/`.
 
+### Acordion Pad FX (samples pitch-shifted)
+
+```bash
+bash scripts/generate-accordion-pad-samples.sh
+```
+
+Toma `public/original-sounds/acordion-pad-c/120931__juskiddink__accordion-pad1.wav` (acorde de C menor de acordeon con modulacion de filtro, [Freesound #120931](https://freesound.org/people/juskiddink/sounds/120931/), CC-BY 4.0) y genera las 13 notas cromaticas por pitch-shifting desde C3 (130.81 Hz). Los archivos se crean en `public/sounds-accordion-pad/`.
+
 > Los archivos generados estan en `.gitignore` porque son reproducibles con los scripts. Los WAV fuente si se versionan.
 
 ## Otros comandos
@@ -287,7 +332,7 @@ Toma los samples MKS y genera versiones con crossfade integrado en el audio: la 
 ## Uso del instrumento
 
 1. **Iniciar**: al abrir la app, presiona "Iniciar" para activar el audio
-2. **Elegir instrumento**: selecciona el sonido deseado (MKS Drone o MKS Realistic)
+2. **Elegir instrumento**: selecciona el sonido deseado (MKS Drone, MKS Realistic o Acordion Pad FX)
 3. **Activar notas**: haz click en las lengüetas que deseas escuchar (se marcan como seleccionadas)
 4. **Reproducir**: presiona el boton Play (o barra espaciadora) para iniciar el drone
 5. **Modificar en vivo**: mientras suena, puedes cambiar instrumento, activar o desactivar notas
@@ -364,6 +409,31 @@ El selector de idioma aparece en la esquina superior derecha, tanto en la pantal
 1. Eliminar el archivo del locale en `src/i18n/locales/`
 2. Remover el import y la entrada del array `LOCALES` en `src/i18n/locales/index.js`
 
+## Skins / Temas
+
+La interfaz soporta multiples skins (temas visuales) con un sistema modular basado en CSS custom properties. Cada skin define ~34 variables que controlan todos los colores de la app: fondos, textos, acentos, panel de madera, lenguetas, tornillos, bordes y estados.
+
+### Skins disponibles
+
+
+| Skin          | ID           | Inspiracion                                                                      |
+| ------------- | ------------ | -------------------------------------------------------------------------------- |
+| Madera Oscura | `dark-wood`  | Palisandro/sheesham del MKS original. Fondos profundos ambar/piedra, texto claro |
+| Madera Clara  | `light-wood` | Arce/abedul (maple/birch). Tonos miel y crema calido, texto oscuro               |
+
+
+El selector de skin aparece en la esquina superior derecha (icono luna/sol), tanto en la pantalla de inicio como en el instrumento. El skin seleccionado se guarda en `localStorage` y se restaura automaticamente.
+
+### Agregar un nuevo skin
+
+1. Crear un archivo en `src/skins/` (ej: `vintageWood.js`) exportando un objeto con `id`, `name`, `preview`, `meta` y `cssVars` (usar cualquier skin existente como referencia)
+2. Importar y agregar el nuevo skin al array `SKINS` en `src/skins/index.js`
+
+### Quitar un skin
+
+1. Eliminar el archivo del skin en `src/skins/`
+2. Remover el import y la entrada del array `SKINS` en `src/skins/index.js`
+
 ## Feature flags
 
 `src/config/featureFlags.js` permite activar/desactivar funcionalidades sin modificar los componentes:
@@ -415,7 +485,7 @@ En lugar de usar el loop built-in, se ejecutan **dos players que se alternan**:
 
 El audio nunca alcanza el punto de corte, eliminando completamente el click de loop.
 
-Esta tecnica esta implementada en `GrainAudioManager.js` para el instrumento **MKS Drone**, y extendida en `RealisticGrainAudioManager.js` para **MKS Realistic**.
+Esta tecnica esta implementada en `GrainAudioManager.js` para el instrumento **MKS Drone**, extendida en `RealisticGrainAudioManager.js` para **MKS Realistic**, y adaptada en `AccordionPadAudioManager.js` para **Acordion Pad FX** con parametros optimizados para samples tipo pad.
 
 > Para documentacion detallada de las mejoras de audio, ver `[docs/audio-improvements.md](docs/audio-improvements.md)`.
 
@@ -430,9 +500,26 @@ Esta tecnica esta implementada en `GrainAudioManager.js` para el instrumento **M
 | `[docs/realistic-engine.md](docs/realistic-engine.md)`                                                         | Motor MKS Realistic: bellows stagger y release   |
 | `[docs/shrutibox-details-buildiing-and-how-to-works.md](docs/shrutibox-details-buildiing-and-how-to-works.md)` | Analisis fisico y acustico del shruti box MKS    |
 
+<<<<<<< HEAD
+
+## Creditos de audio
+
+
+| Sample             | Autor      | Fuente                                                                      | Licencia                                                  |
+| ------------------ | ---------- | --------------------------------------------------------------------------- | --------------------------------------------------------- |
+| Accordion pad1.wav | juskiddink | [Freesound #120931](https://freesound.org/people/juskiddink/sounds/120931/) | [CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
+
+=======
+>>>>>>> main
 
 ## Autor
 
 Desarrollado por [Lucas Paiva](https://github.com/lucaspaiva-dev).
 
+<<<<<<< HEAD
+Basado en el instrumento fisico Monoj Kumar Sardar 440Hz.  
+  
+VIVEKA
+=======
 Basado en el instrumento fisico Monoj Kumar Sardar 440Hz..
+>>>>>>> main

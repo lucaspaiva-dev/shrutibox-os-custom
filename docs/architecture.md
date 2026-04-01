@@ -27,21 +27,33 @@ src/
 │
 ├── audio/
 │   ├── audioEngine.js            # Proxy mutable: delega al motor de audio activo
-│   ├── instruments.js            # Registro de instrumentos disponibles (MKS Drone, MKS Realistic)
+│   ├── instruments.js            # Registro de instrumentos disponibles (MKS Drone, MKS Realistic, Acordion Pad FX)
+│   ├── metronomeEngine.js        # Motor de audio del metrónomo (Tone.Synth + Transport)
 │   ├── AudioManager.js           # Motor de sintesis (PolySynth fatsine) — oculto
 │   ├── SampleAudioManager.js     # Motor de samples (Tone.Player con loop) — oculto
 │   ├── GrainAudioManager.js      # Motor granular (dual player cycling con crossfade) — MKS Drone
 │   ├── RealisticGrainAudioManager.js  # GrainAudioManager + bellows stagger — MKS Realistic
+│   ├── AccordionPadAudioManager.js    # Motor granular para pad de acordeon — Acordion Pad FX
 │   └── noteMap.js                # 13 notas cromaticas (Sargam + komal/tivra)
 │
 ├── store/
-│   └── useShrutiStore.js         # Store global (Zustand)
+│   ├── useShrutiStore.js         # Store global del instrumento (Zustand)
+│   ├── useMetronomeStore.js      # Store del metrónomo (Zustand, BPM/beats/accents persistidos)
+│   └── useThemeStore.js          # Store de tema/skin (Zustand, persistido en localStorage)
+│
+├── skins/
+│   ├── index.js                  # Registro central: SKINS[], SKINS_BY_ID, DEFAULT_SKIN_ID
+│   ├── skinEngine.js             # Motor: aplica CSS custom properties en :root
+│   ├── darkWood.js               # Skin "Madera Oscura" (palisandro/sheesham)
+│   └── lightWood.js              # Skin "Madera Clara" (arce/abedul)
 │
 ├── components/
 │   ├── Display.jsx               # [DEPRECADO v2] — lógica migrada a NoteGrid.jsx
-│   ├── NoteGrid.jsx              # Panel principal unificado (visor + lengüetas + mangos)
+│   ├── NoteGrid.jsx              # Panel principal unificado (visor + lengüetas + mangos + metrónomo toggle)
 │   ├── NoteButton.jsx            # Lengüeta individual (toggle switch)
-│   └── Controls.jsx              # Barra compacta: solo selector de instrumento
+│   ├── MetronomePanel.jsx        # Panel de controles del metrónomo (beats, BPM, play/stop)
+│   ├── Controls.jsx              # Barra compacta: solo selector de instrumento
+│   └── SkinSelector.jsx          # Toggle de tema sol/luna
 │
 ├── hooks/
 │   └── useKeyboard.js            # Mapeo de teclado fisico (estilo piano, 13 notas)
@@ -85,7 +97,8 @@ La aplicacion sigue una separacion clara en tres capas:
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │                    CAPA DE AUDIO (Tone.js)                                    │
 │                    audioEngine.js (Proxy mutable)                             │
-│                    instruments.js (Registro: MKS Drone, MKS Realistic)        │
+│                    instruments.js (Registro: MKS Drone, MKS Realistic,       │
+│                                    Acordion Pad FX)                          │
 │                                                                              │
 │   ┌─────────────────────────────┐ ┌──────────────────────────────────┐       │
 │   │   GrainAudioManager         │ │   RealisticGrainAudioManager      │       │
@@ -96,6 +109,13 @@ La aplicacion sigue una separacion clara en tres capas:
 │   │   crossfade 2.0s            │ │   + bellows stagger (90ms/semi)   │       │
 │   └──────────────┬──────────────┘ └──────────────────┬───────────────┘       │
 │                  └─────────────────────┬──────────────┘                       │
+│                                        │                                      │
+│   ┌────────────────────────────────────┴──────────────────────────────┐       │
+│   │   AccordionPadAudioManager (Acordion Pad FX — activo)             │       │
+│   │   /sounds-accordion-pad/  (pitch-shifted desde WAV unico)         │       │
+│   │   Tone.GrainPlayer, dual player cycling, granos 0.8s             │       │
+│   └──────────────────────────────┬────────────────────────────────────┘       │
+│                                  │                                            │
 │                                        ▼                                      │
 │                                 Tone.Volume (-6dB)                            │
 │                                        ▼                                      │
@@ -123,12 +143,14 @@ Componentes que renderizan la UI y capturan interacciones:
   - *Mango derecho*: botón Play/Stop circular + slider de volumen vertical (fader físico).
   - Los mangos imitan los mangos de fuelle del instrumento acústico real MKS.
 - **NoteButton** — lengüeta toggle con estados visual: cerrada (no seleccionada) y abierta/rotada (seleccionada). En modo didáctico muestra nombre Sargam y equivalente occidental.
-- **Controls** — barra compacta con selector de instrumento (MKS Drone / MKS Realistic). Play/Stop y Volumen fueron movidos a NoteGrid en v2.
+- **Controls** — barra compacta con selector de instrumento (MKS Drone / MKS Realistic / Acordion Pad FX). Play/Stop y Volumen fueron movidos a NoteGrid en v2.
 - **Display** — [DEPRECADO v2] su lógica fue inlinada en NoteGrid.jsx.
 
 ### 2. Estado (Zustand)
 
-Store centralizado con estado reactivo:
+Dos stores centralizados con estado reactivo:
+
+**useShrutiStore** — estado del instrumento:
 
 | Estado          | Tipo       | Persistencia       | Descripcion                          |
 | --------------- | ---------- | ------------------ | ------------------------------------ |
@@ -143,9 +165,17 @@ Store centralizado con estado reactivo:
 
 Acciones principales: `init()`, `setInstrument(id)`, `toggleNote(noteId)`, `togglePlay()`, `setVolume()`, `setSpeed()`, `toggleViewMode()`, `toggleChorus()`, `reset()`.
 
+**useThemeStore** — estado del tema visual:
+
+| Estado   | Tipo     | Persistencia   | Descripcion              |
+| -------- | -------- | -------------- | ------------------------ |
+| `skinId` | `string` | `localStorage` | ID del skin activo       |
+
+Acciones: `setSkin(id)`, `toggleSkin()`. Al importar el modulo se aplica automaticamente el skin guardado (o el default) antes del primer render.
+
 ### 3. Audio (Tone.js)
 
-La capa de audio ofrece dos motores activos e intercambiables a traves del proxy mutable `audioEngine.js`:
+La capa de audio ofrece tres motores activos e intercambiables a traves del proxy mutable `audioEngine.js`:
 
 **MKS Drone** (`GrainAudioManager` — dual player granular con crossfade):
 - Motor activo por defecto (ID: `mks-grain`).
@@ -163,12 +193,21 @@ La capa de audio ofrece dos motores activos e intercambiables a traves del proxy
 - Bellows release: al detener el drone, las notas agudas se apagan primero.
 - Ver [`docs/realistic-engine.md`](realistic-engine.md) para documentacion detallada.
 
+**Acordion Pad FX** (`AccordionPadAudioManager` — dual player granular optimizado para pad):
+- Motor activo (ID: `accordion-pad`).
+- Usa la misma tecnica de dual player cycling que MKS Drone, pero con parametros calibrados para un sample tipo pad con modulacion de filtro.
+- Los 13 samples se generan por pitch-shifting offline desde un unico WAV fuente: "Accordion pad1.wav" de juskiddink ([Freesound #120931](https://freesound.org/people/juskiddink/sounds/120931/), CC-BY 4.0).
+- Granos mas largos (`grainSize: 0.8s` vs 0.5s) y mayor overlap (`0.25` vs `0.15`) para preservar la textura del pad.
+- Region de reproduccion: `loopStart: 0.5s`, `loopEnd: 20.0s` (aprovecha el ataque musical del acordeon).
+- Crossfade de 3.0s y fade-in inicial de 3.5s para un efecto "swell" mas pronunciado.
+- Las instancias se crean en `instruments.js` con `basePath='/sounds-accordion-pad'`.
+
 Todos los motores activos:
 - Exponen la misma interfaz publica: `init()`, `playNote()`, `stopNote()`, `playNotes()`, `stopAll()`, `setVolume()`, `setSpeed()`, `setChorusEnabled(bool)`, `dispose()`.
 - Se enrutan a un nodo `Tone.Volume` maestro (-6dB) seguido de un `Tone.Chorus` (ver abajo).
-- Las instancias se crean en `instruments.js` con `basePath='/sounds-mks'`.
+- Las instancias se crean en `instruments.js` con su respectivo `basePath`.
 
-**Efecto Chorus** (ambos motores granulares):
+**Efecto Chorus** (todos los motores granulares):
 - Nodo `Tone.Chorus` insertado entre `Volume` y `Destination`: `Volume → Chorus → Destination`.
 - Parametros: `frequency: 0.4 Hz`, `delayTime: 2.5ms`, `depth: 0.15`, `spread: 0`.
 - Arranca **desactivado** (`wet: 0`). Se activa via `setChorusEnabled(true)` que sube `wet` a `0.3`.
@@ -191,6 +230,64 @@ Todos los motores activos:
 
 ---
 
+## Sistema de Skins
+
+La aplicacion soporta multiples skins (temas visuales) mediante CSS custom properties. Cada skin es un objeto autocontenido que define ~34 variables CSS que controlan todos los colores de la interfaz.
+
+### Arquitectura
+
+```
+src/skins/
+  darkWood.js         Skin "Madera Oscura" (default)
+  lightWood.js        Skin "Madera Clara"
+  index.js            Registro: SKINS[], SKINS_BY_ID, DEFAULT_SKIN_ID
+  skinEngine.js       applySkin(): setea vars en :root + meta theme-color
+```
+
+```
+   ┌──────────────────┐     ┌───────────────────┐
+   │ darkWood.js      │     │ lightWood.js       │
+   │ { cssVars: ... } │     │ { cssVars: ... }   │
+   └───────┬──────────┘     └────────┬───────────┘
+           └──────────┬──────────────┘
+                      ▼
+             ┌────────────────┐
+             │ skinEngine.js  │
+             │ applySkin()    │
+             └───────┬────────┘
+                     ▼
+             :root { --sb-* }
+                     │
+         ┌───────────┴───────────┐
+         ▼                       ▼
+   @theme (Tailwind v4)     index.css
+   --color-sb-* = var()     .shrutibox-body
+   → bg-sb-*, text-sb-*    .shrutibox-reed, etc.
+```
+
+### Categorias de variables CSS
+
+| Prefijo | Uso | Ejemplo |
+|---------|-----|---------|
+| `--sb-bg-*` | Fondos de la app | `--sb-bg`, `--sb-bg-deep` |
+| `--sb-text-*` | Colores de texto | `--sb-text`, `--sb-text-mid` |
+| `--sb-accent-*` | Acentos y CTAs | `--sb-accent`, `--sb-accent-hover` |
+| `--sb-body-*` | Panel de madera | `--sb-body-1`, `--sb-body-shine` |
+| `--sb-reed-*` | Lenguetas marfil | `--sb-reed-1` a `--sb-reed-5` |
+| `--sb-screw-*` | Tornillos metalicos | `--sb-screw-1` a `--sb-screw-4` |
+| `--sb-slot-*` | Ranuras | `--sb-slot-start`, `--sb-slot-end` |
+| `--sb-chrome/border/muted` | Elementos UI | Bordes, handles, separadores |
+| `--sb-play/stop/playing` | Estados de audio | Play, Stop, indicador |
+
+### Agregar un nuevo skin
+
+1. Crear archivo en `src/skins/` (ej: `vintageWood.js`) exportando un objeto con `id`, `name`, `preview`, `meta` y `cssVars`
+2. Importar y agregar al array `SKINS` en `src/skins/index.js`
+
+El `SkinSelector` se adapta automaticamente al numero de skins disponibles.
+
+---
+
 ## UI Layout v2 — Mobile-First Minimalista
 
 ### Motivación
@@ -203,7 +300,7 @@ Imagen de referencia: `assets/shrutibox-frontal-mks-709df372-1768-4a8b-b639-4861
 
 ```
 ┌──────────────────────────────────────────────────┐
-│  ← Inicio                        ES  PT  EN      │  header (sin cambios)
+│  ← Inicio                    ☾/☀  ES  PT  EN    │  header + skin toggle
 ├──────────────────────────────────────────────────┤
 │ ┌────────────────────────────────────────────┐   │
 │ │  [visor: Sa · Re♭ · Ma  ●Sonando]          │   │  visor integrado
@@ -215,7 +312,7 @@ Imagen de referencia: `assets/shrutibox-frontal-mks-709df372-1768-4a8b-b639-4861
 │ │  ·············································   │  separador dec.
 │ └────────────────────────────────────────────┘   │
 ├──────────────────────────────────────────────────┤
-│  Instrumento: [ MKS Drone ] [ MKS Realistic ]    │  barra compacta
+│  Instrumento: [MKS Drone] [MKS Realistic] [Pad FX]│  barra compacta
 ├──────────────────────────────────────────────────┤
 │            créditos / footer                     │
 └──────────────────────────────────────────────────┘
@@ -245,6 +342,9 @@ Imagen de referencia: `assets/shrutibox-frontal-mks-709df372-1768-4a8b-b639-4861
 | `viewMode.title` | Notas | Notas | Notes |
 | `chorus.title` | FX | FX | FX |
 | `chorus.label` | Activar efecto de coro | Ativar efeito chorus | Enable chorus effect |
+| `theme.toggle` | Cambiar tema | Alternar tema | Toggle theme |
+| `theme.dark` | Tema oscuro | Tema escuro | Dark theme |
+| `theme.light` | Tema claro | Tema claro | Light theme |
 
 ---
 
@@ -313,9 +413,48 @@ El hook `useKeyboard` conecta el teclado fisico con la app:
 - **Toggle-then-play**: las notas se seleccionan antes de reproducir; el drone suena con todas las notas seleccionadas simultaneamente.
 - **Modificacion en tiempo real**: se pueden agregar o quitar notas durante la reproduccion sin interrumpir el drone.
 - **Instrumentos intercambiables**: `audioEngine.js` actua como proxy mutable, delegando al motor del instrumento seleccionado por el usuario.
-- **Instancias de audio**: `AudioManager` exporta un singleton. `SampleAudioManager` y `GrainAudioManager` exportan clases para permitir multiples instancias con distintos `basePath` y opciones. Las instancias se crean en `instruments.js`. El proxy `audioEngine` es singleton.
+- **Instancias de audio**: `AudioManager` exporta un singleton. `SampleAudioManager`, `GrainAudioManager` y `AccordionPadAudioManager` exportan clases para permitir multiples instancias con distintos `basePath` y opciones. Las instancias se crean en `instruments.js`. El proxy `audioEngine` es singleton.
 - **Inicializacion por interaccion**: el navegador requiere un gesto del usuario para iniciar el `AudioContext`; el `StartScreen` cumple este requisito.
 - **Zustand reactivo**: los componentes se suscriben solo a las porciones del store que necesitan, evitando re-renders innecesarios.
+
+---
+
+---
+
+## Metrónomo
+
+El metrónomo es una funcionalidad secundaria que sigue la misma arquitectura de 3 capas del proyecto, con módulos independientes que no interfieren con el drone del shrutibox.
+
+Ver [docs/metronome.md](metronome.md) para documentación completa.
+
+### Componentes del metrónomo
+
+| Archivo | Rol |
+|---------|-----|
+| `src/audio/metronomeEngine.js` | Motor de audio: `Tone.Synth` + `Tone.Transport`, dos tonos (acento/normal), scheduling preciso, callback `onBeat()` |
+| `src/store/useMetronomeStore.js` | Store Zustand: `enabled`, `playing`, `bpm`, `beats`, `accents`, `currentBeat`; BPM/beats/accents persistidos en `localStorage` |
+| `src/components/MetronomePanel.jsx` | Panel expandible: casilleros de beats con toggle de acento, control BPM con repetición al mantener presionado, botón play/stop |
+| `src/components/NoteGrid.jsx` | Integra el ícono de toggle del metrónomo en el visor de notas y el render condicional de `MetronomePanel` |
+
+### Flujo
+
+```
+NoteGrid (ícono toggle)
+    ↓ toggleEnabled()
+useMetronomeStore
+    ↓ start(bpm, beats, accents)
+metronomeEngine
+    ↓ Tone.Transport.scheduleRepeat('4n')
+Tone.Synth → Tone.Volume → Speaker
+    ↓ onBeat(index) → Tone.getDraw()
+useMetronomeStore.currentBeat → MetronomePanel (feedback visual)
+```
+
+### Notas de implementación
+
+- El `Tone.Transport` del metrónomo no interfiere con los motores de drone porque estos usan scheduling manual propio (dual player cycling), no Transport.
+- El canal de audio del metrónomo (`Tone.Volume` propio) es independiente del nodo maestro del drone, permitiendo reproducción simultánea.
+- `Tone.getDraw().schedule()` sincroniza la actualización visual del beat activo con el frame de render de React, evitando desincronía entre audio y UI.
 
 ---
 

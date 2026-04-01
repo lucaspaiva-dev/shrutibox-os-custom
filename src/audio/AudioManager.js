@@ -18,8 +18,8 @@ class AudioManager {
     /** @type {Map<string, Tone.PolySynth>} Synths activos indexados por noteId. */
     this.activeSynths = new Map();
 
-    /** @type {Tone.Volume} Nodo de volumen maestro conectado a la salida. */
-    this.volume = new Tone.Volume(-6).toDestination();
+    /** @type {Tone.Volume|null} Nodo de volumen maestro conectado a la salida. */
+    this.volume = null;
 
     /** @type {number} Tiempo de ataque del envelope en segundos. */
     this.attackTime = 0.08;
@@ -34,7 +34,11 @@ class AudioManager {
    */
   async init() {
     if (this.initialized) return;
-    await Tone.start();
+    // Nota: el desbloqueo del AudioContext (Tone.start + silent buffer trick)
+    // ya fue realizado por unlockAudio() desde el gesto del usuario en App.jsx
+    // antes de llegar aquí. No llamar Tone.start() de nuevo para evitar
+    // condiciones de carrera en iOS con múltiples resume() simultáneos.
+    this.volume = new Tone.Volume(-6).toDestination();
     this.initialized = true;
   }
 
@@ -148,7 +152,8 @@ class AudioManager {
   dispose() {
     this.stopAll();
     this.activeSynths.clear();
-    this.volume.dispose();
+    this.volume?.dispose();
+    this.volume = null;
     this.initialized = false;
   }
 }

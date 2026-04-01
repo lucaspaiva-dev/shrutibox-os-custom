@@ -16,8 +16,8 @@ export default function LanguageSelector() {
             px-2 py-1 rounded text-xs font-bold transition-all
             ${
               loc.id === locale
-                ? 'bg-amber-500 text-amber-950 shadow-sm'
-                : 'bg-amber-900/40 text-amber-500/60 hover:bg-amber-800/50 hover:text-amber-400'
+                ? 'bg-sb-accent text-sb-accent-ink shadow-sm'
+                : 'bg-sb-chrome/40 text-sb-text-faint hover:bg-sb-border/50 hover:text-sb-text-mid'
             }
           `}
         >

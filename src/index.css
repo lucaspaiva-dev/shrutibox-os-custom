@@ -1,23 +1,47 @@
 @import "tailwindcss";
 
+/*
+ * Tailwind v4 theme — mapea CSS custom properties del skin activo
+ * a colores utility de Tailwind (bg-sb-*, text-sb-*, border-sb-*, etc.).
+ * Los valores reales los inyecta skinEngine.js en :root al arrancar.
+ */
+@theme {
+  --color-sb-bg: var(--sb-bg);
+  --color-sb-bg-deep: var(--sb-bg-deep);
+  --color-sb-text: var(--sb-text);
+  --color-sb-text-mid: var(--sb-text-mid);
+  --color-sb-text-faint: var(--sb-text-faint);
+  --color-sb-accent: var(--sb-accent);
+  --color-sb-accent-hover: var(--sb-accent-hover);
+  --color-sb-accent-ink: var(--sb-accent-ink);
+  --color-sb-chrome: var(--sb-chrome);
+  --color-sb-border: var(--sb-border);
+  --color-sb-muted: var(--sb-muted);
+  --color-sb-neutral: var(--sb-neutral);
+  --color-sb-play: var(--sb-play);
+  --color-sb-stop: var(--sb-stop);
+  --color-sb-playing: var(--sb-playing);
+  --color-sb-focus-ring: var(--sb-focus-ring);
+}
+
 /* Panel frontal del shrutibox: textura de madera */
 .shrutibox-body {
   background:
-    linear-gradient(135deg, rgba(120, 80, 40, 0.15) 0%, transparent 50%),
+    linear-gradient(135deg, var(--sb-body-shine) 0%, transparent 50%),
     linear-gradient(180deg,
-      hsl(30, 40%, 14%) 0%,
-      hsl(28, 35%, 12%) 40%,
-      hsl(25, 30%, 10%) 100%
+      var(--sb-body-1) 0%,
+      var(--sb-body-2) 40%,
+      var(--sb-body-3) 100%
     );
   box-shadow:
-    inset 0 1px 0 rgba(200, 150, 80, 0.08),
-    inset 0 -2px 4px rgba(0, 0, 0, 0.3),
-    0 4px 16px rgba(0, 0, 0, 0.4);
+    inset 0 1px 0 var(--sb-body-highlight),
+    inset 0 -2px 4px var(--sb-body-shadow-inset),
+    0 4px 16px var(--sb-body-shadow-outer);
 }
 
 /* Ranura/abertura debajo de la lengueta */
 .shrutibox-slot {
-  background: linear-gradient(180deg, #050302 0%, #150e08 100%);
+  background: linear-gradient(180deg, var(--sb-slot-start) 0%, var(--sb-slot-end) 100%);
   border-radius: 2px;
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.9);
 }
@@ -25,14 +49,14 @@
 /* Lengueta — forma capsula color marfil */
 .shrutibox-reed {
   background: linear-gradient(180deg,
-    #f0e8db 0%,
-    #ebe3d4 25%,
-    #e5dccc 50%,
-    #dfd5c3 75%,
-    #d9cfba 100%
+    var(--sb-reed-1) 0%,
+    var(--sb-reed-2) 25%,
+    var(--sb-reed-3) 50%,
+    var(--sb-reed-4) 75%,
+    var(--sb-reed-5) 100%
   );
   border-radius: 7px;
-  border: 1px solid rgba(180, 165, 140, 0.4);
+  border: 1px solid var(--sb-reed-border);
   box-shadow:
     inset 0 1px 3px rgba(255, 255, 255, 0.4),
     inset 0 -1px 2px rgba(0, 0, 0, 0.06),
@@ -41,8 +65,26 @@
   transition: transform 0.25s ease-out, box-shadow 0.25s ease-out;
 }
 
+.shrutibox-reed:hover {
+  filter: brightness(1.04);
+  box-shadow:
+    inset 0 1px 3px rgba(255, 255, 255, 0.45),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.06),
+    0 3px 10px rgba(0, 0, 0, 0.3),
+    0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
 .shrutibox-reed:active {
-  filter: brightness(0.95);
+  filter: brightness(0.9);
+  transform: scale(0.97);
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.15),
+    0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.shrutibox-reed:focus-visible {
+  outline: 2px solid var(--sb-focus-ring);
+  outline-offset: 2px;
 }
 
 /* Pivote superior — lenguetas shuddh (cuelgan hacia abajo) */
@@ -70,10 +112,10 @@
   height: 10px;
   border-radius: 50%;
   background: radial-gradient(circle at 38% 32%,
-    #ccc5b5 0%,
-    #a8a090 35%,
-    #908878 70%,
-    #787068 100%
+    var(--sb-screw-1) 0%,
+    var(--sb-screw-2) 35%,
+    var(--sb-screw-3) 70%,
+    var(--sb-screw-4) 100%
   );
   box-shadow:
     inset 0 1px 1px rgba(255, 255, 255, 0.3),
@@ -113,12 +155,112 @@
   height: 76px;
   width: 20px;
   cursor: pointer;
-  accent-color: #f59e0b;
+  accent-color: var(--sb-slider-accent);
   flex-shrink: 0;
 }
 
 @media (min-width: 640px) {
   .volume-slider-vertical {
     height: 96px;
+  }
+}
+
+/*
+ * ── Metronome ───────────────────────────────────────────
+ * Clases para los controles inline del metrónomo.
+ * Usa tokens del skin activo (--sb-*) para funcionar con todos los temas.
+ */
+
+.metronome-ctrl {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.5rem;
+  border: 1px solid color-mix(in srgb, var(--sb-border) 25%, transparent);
+  background: color-mix(in srgb, var(--sb-neutral) 40%, transparent);
+  color: color-mix(in srgb, var(--sb-text-faint) 70%, transparent);
+  transition: all 150ms ease-out;
+  cursor: pointer;
+  user-select: none;
+}
+.metronome-ctrl:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--sb-border) 45%, transparent);
+  background: color-mix(in srgb, var(--sb-neutral) 65%, transparent);
+  color: var(--sb-text-faint);
+}
+.metronome-ctrl:active:not(:disabled) {
+  transform: scale(0.88);
+  background: color-mix(in srgb, var(--sb-neutral) 80%, transparent);
+}
+.metronome-ctrl:focus-visible {
+  outline: 2px solid var(--sb-focus-ring);
+  outline-offset: 2px;
+}
+.metronome-ctrl:disabled {
+  opacity: 0.2;
+  cursor: default;
+}
+
+/* Beat pip — LED circular */
+.metronome-pip {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1.5px solid color-mix(in srgb, var(--sb-border) 30%, transparent);
+  background: color-mix(in srgb, var(--sb-neutral) 20%, transparent);
+  color: color-mix(in srgb, var(--sb-text-faint) 45%, transparent);
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+  flex-shrink: 0;
+  transition:
+    transform 100ms ease-out,
+    border-color 100ms ease-out,
+    box-shadow 100ms ease-out,
+    background 100ms ease-out,
+    color 100ms ease-out;
+}
+.metronome-pip:hover:not(.metronome-pip--active) {
+  border-color: color-mix(in srgb, var(--sb-border) 50%, transparent);
+  background: color-mix(in srgb, var(--sb-neutral) 40%, transparent);
+  color: color-mix(in srgb, var(--sb-text-faint) 80%, transparent);
+}
+.metronome-pip:active {
+  transform: scale(0.88);
+}
+.metronome-pip:focus-visible {
+  outline: 2px solid var(--sb-focus-ring);
+  outline-offset: 2px;
+}
+
+.metronome-pip--accent {
+  border-color: color-mix(in srgb, var(--sb-accent) 55%, transparent);
+  background: color-mix(in srgb, var(--sb-accent) 18%, transparent);
+  color: var(--sb-accent);
+  box-shadow:
+    inset 0 0 4px color-mix(in srgb, var(--sb-accent) 10%, transparent);
+}
+
+.metronome-pip--active {
+  transform: scale(1.18);
+  border-color: var(--sb-accent);
+  background: color-mix(in srgb, var(--sb-accent) 25%, transparent);
+  color: var(--sb-accent);
+  box-shadow:
+    0 0 10px color-mix(in srgb, var(--sb-accent) 35%, transparent),
+    0 0 20px color-mix(in srgb, var(--sb-accent) 15%, transparent),
+    inset 0 0 6px color-mix(in srgb, var(--sb-accent) 12%, transparent);
+}
+.metronome-pip--active:active {
+  transform: scale(1.1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .metronome-pip,
+  .metronome-ctrl,
+  .shrutibox-reed {
+    transition-duration: 0ms;
   }
 }

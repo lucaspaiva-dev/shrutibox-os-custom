@@ -17,6 +17,7 @@
  */
 
 import { create } from 'zustand';
+import * as Tone from 'tone';
 import audioEngine from '../audio/audioEngine';
 import { INSTRUMENTS_BY_ID, DEFAULT_INSTRUMENT_ID } from '../audio/instruments';
 
@@ -113,14 +114,27 @@ const useShrutiStore = create((set, get) => ({
    * Alterna la reproduccion del drone (play/stop).
    * - Play: reproduce todas las notas seleccionadas simultaneamente.
    * - Stop: detiene todo el audio; las notas quedan seleccionadas.
+   *
+   * Nota iOS: el AudioContext puede pasar a estado `suspended` cuando la app
+   * va a background o la pantalla se apaga. Al reanudar, intentamos `resume()`
+   * antes de reproducir para evitar silencio sin error visible.
    */
-  togglePlay: () => {
+  togglePlay: async () => {
     const { playing, selectedNotes } = get();
 
     if (playing) {
       audioEngine.stopAll();
       set({ playing: false });
     } else {
+      // Recuperar el contexto si fue interrumpido (iOS suspende al ir a background).
+      try {
+        const rawCtx = Tone.getContext().rawContext;
+        if (rawCtx.state !== 'running') {
+          await rawCtx.resume();
+        }
+      } catch {
+        // Si resume() falla, intentamos reproducir de todas formas.
+      }
       if (selectedNotes.length > 0) {
         audioEngine.playNotes(selectedNotes);
       }

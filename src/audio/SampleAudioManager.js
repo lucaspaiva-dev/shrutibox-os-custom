@@ -42,7 +42,7 @@ class SampleAudioManager {
     this.initialized = false;
     this.buffers = new Map();
     this.activePlayers = new Map();
-    this.volume = new Tone.Volume(-6).toDestination();
+    this.volume = null;
     this.fadeInTime = this.loopConfig.fadeIn;
     this.fadeOutTime = this.loopConfig.fadeOut;
   }
@@ -64,7 +64,11 @@ class SampleAudioManager {
    */
   async init() {
     if (this.initialized) return;
-    await Tone.start();
+    // Nota: el desbloqueo del AudioContext (Tone.start + silent buffer trick)
+    // ya fue realizado por unlockAudio() desde el gesto del usuario en App.jsx
+    // antes de llegar aquí. No llamar Tone.start() de nuevo para evitar
+    // condiciones de carrera en iOS con múltiples resume() simultáneos.
+    this.volume = new Tone.Volume(-6).toDestination();
 
     const loadPromises = NOTES.map(
       (note) =>
@@ -189,7 +193,8 @@ class SampleAudioManager {
       buffer.dispose();
     }
     this.buffers.clear();
-    this.volume.dispose();
+    this.volume?.dispose();
+    this.volume = null;
     this.initialized = false;
   }
 }
