@@ -23,6 +23,7 @@
 import { useState, useEffect, useRef } from 'react';
 import * as Tone from 'tone';
 import useShrutiStore from '../store/useShrutiStore';
+import isIOS from '../audio/isIOS';
 
 /**
  * Lee el estado del AudioContext en tiempo real.
@@ -77,6 +78,7 @@ export function AudioDebugPanel() {
   const playing = useShrutiStore((s) => s.playing);
   const instrumentId = useShrutiStore((s) => s.instrumentId);
   const selectedNotes = useShrutiStore((s) => s.selectedNotes);
+  const onIOS = isIOS();
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 p-3 bg-black/90 border-t border-white/10 text-[11px] font-mono text-white/80 space-y-1.5">
@@ -108,6 +110,16 @@ export function AudioDebugPanel() {
         <div className="flex items-center gap-1.5">
           <span className="text-white/50">notes</span>
           <span className="text-white/70">{selectedNotes.length}</span>
+        </div>
+        <div className="col-span-2 flex flex-col gap-0.5 pt-0.5 border-t border-white/10 mt-0.5">
+          <div className="flex items-baseline gap-1.5 flex-wrap">
+            <span className="text-white/50 shrink-0">plataforma</span>
+            <span className="text-white/70 text-[10px] leading-snug">
+              {onIOS
+                ? 'iOS/iPadOS — instrumentos vía Tone.Player (fallback WebKit; GrainPlayer inactivo).'
+                : 'Desktop/Android — motores granulares (GrainPlayer).'}
+            </span>
+          </div>
         </div>
       </div>
     </div>
