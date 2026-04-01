@@ -500,6 +500,7 @@ Esta tecnica esta implementada en `GrainAudioManager.js` para el instrumento **M
 | `[docs/realistic-engine.md](docs/realistic-engine.md)`                                                         | Motor MKS Realistic: bellows stagger y release   |
 | `[docs/shrutibox-details-buildiing-and-how-to-works.md](docs/shrutibox-details-buildiing-and-how-to-works.md)` | Analisis fisico y acustico del shruti box MKS    |
 
+<<<<<<< HEAD
 
 ## Creditos de audio
 
@@ -508,11 +509,17 @@ Esta tecnica esta implementada en `GrainAudioManager.js` para el instrumento **M
 | ------------------ | ---------- | --------------------------------------------------------------------------- | --------------------------------------------------------- |
 | Accordion pad1.wav | juskiddink | [Freesound #120931](https://freesound.org/people/juskiddink/sounds/120931/) | [CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 
+=======
+>>>>>>> main
 
 ## Autor
 
 Desarrollado por [Lucas Paiva](https://github.com/lucaspaiva-dev).
 
+<<<<<<< HEAD
 Basado en el instrumento fisico Monoj Kumar Sardar 440Hz.  
   
 VIVEKA
+=======
+Basado en el instrumento fisico Monoj Kumar Sardar 440Hz..
+>>>>>>> main
