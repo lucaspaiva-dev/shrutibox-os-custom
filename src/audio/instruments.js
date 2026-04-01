@@ -15,26 +15,20 @@
  * con loop nativo) apuntando a los mismos archivos MP3. Tone.Player SI funciona
  * en iOS porque crea AudioBufferSourceNodes directamente.
  *
- * En desktop/Android el comportamiento es identico al original (GrainPlayer).
+ * En desktop/Android el comportamiento granular es el esperado (GrainPlayer
+ * donde aplica).
  *
- * ## Instrumentos activos en desktop
- * - MKS Drone       (id: mks-grain)     — GrainAudioManager, dual player cycling
- * - MKS Realistic   (id: mks-realistic) — RealisticGrainAudioManager, bellows stagger
- * - Accordion Pad   (id: accordion-pad) — AccordionPadAudioManager, granos largos
- * - MKS Player      (id: mks-player)    — SampleAudioManager, Tone.Player loop directo
- *
- * ## Instrumentos en iOS/iPad (fallback automatico)
- * - MKS Drone       (id: mks-grain)     — SampleAudioManager /sounds-mks
- * - MKS Realistic   (id: mks-realistic) — SampleAudioManager /sounds-mks
- * - Accordion Pad   (id: accordion-pad) — SampleAudioManager /sounds-accordion-pad
- * - MKS Player      (id: mks-player)    — SampleAudioManager /sounds-mks (igual que desktop)
+ * ## Instrumentos visibles en la UI
+ * - MKS Realistic   (id: mks-realistic) — desktop: RealisticGrainAudioManager;
+ *   iOS: SampleAudioManager /sounds-mks
+ * - Acordion Pad FX (id: accordion-pad) — desktop: AccordionPadAudioManager;
+ *   iOS: SampleAudioManager /sounds-accordion-pad
  *
  * Para agregar un nuevo instrumento basta con importar su motor y anadir
  * una entrada a los arrays de instrumentos desktop e iOS.
  */
 
 import SampleAudioManager from './SampleAudioManager';
-import GrainAudioManager from './GrainAudioManager';
 import RealisticGrainAudioManager from './RealisticGrainAudioManager';
 import AccordionPadAudioManager from './AccordionPadAudioManager';
 import isIOS from './isIOS';
@@ -43,17 +37,11 @@ import isIOS from './isIOS';
 // Instancias de motores de audio
 // ---------------------------------------------------------------------------
 
-// Instrumentos granulares — solo se usan en desktop/Android.
-const mksGrainManager      = new GrainAudioManager('/sounds-mks');
 const mksRealisticManager  = new RealisticGrainAudioManager('/sounds-mks');
 const accordionPadManager  = new AccordionPadAudioManager('/sounds-accordion-pad');
 
-// Instrumentos basados en Tone.Player — funcionan en todos los dispositivos,
-// incluyendo iOS/iPad donde GrainPlayer falla silenciosamente.
-const mksSampleManager           = new SampleAudioManager('/sounds-mks');
 const mksRealisticSampleManager  = new SampleAudioManager('/sounds-mks');
 const accordionPadSampleManager  = new SampleAudioManager('/sounds-accordion-pad');
-const mksPlayerManager           = new SampleAudioManager('/sounds-mks');
 
 // ---------------------------------------------------------------------------
 // Deteccion de plataforma
@@ -67,25 +55,21 @@ const runningOnIOS = isIOS();
 
 /**
  * Instrumentos para desktop y Android.
- * Usan GrainPlayer para el timbre granular completo.
+ * MKS Realistic y Acordion Pad FX usan motores granulares.
  */
 const INSTRUMENTS_DESKTOP = [
-  { id: 'mks-grain',     name: 'MKS Drone',       engine: mksGrainManager },
   { id: 'mks-realistic', name: 'MKS Realistic',    engine: mksRealisticManager },
   { id: 'accordion-pad', name: 'Acordion Pad FX',  engine: accordionPadManager },
-  { id: 'mks-player',    name: 'MKS Player',        engine: mksPlayerManager },
 ];
 
 /**
  * Instrumentos para iOS / iPad.
- * Todos usan SampleAudioManager (Tone.Player) porque GrainPlayer falla en
- * iOS WebKit. Los nombres incluyen "(iOS)" para indicar el modo fallback.
+ * SampleAudioManager (Tone.Player) porque GrainPlayer falla en iOS WebKit.
+ * Los nombres en pantalla coinciden con desktop; el fallback se indica en el panel de debug (triple-tap footer).
  */
 const INSTRUMENTS_IOS = [
-  { id: 'mks-grain',     name: 'MKS Drone (iOS)',      engine: mksSampleManager },
-  { id: 'mks-realistic', name: 'MKS Realistic (iOS)',  engine: mksRealisticSampleManager },
-  { id: 'accordion-pad', name: 'Acordion Pad (iOS)',    engine: accordionPadSampleManager },
-  { id: 'mks-player',    name: 'MKS Player',            engine: mksPlayerManager },
+  { id: 'mks-realistic', name: 'MKS Realistic',    engine: mksRealisticSampleManager },
+  { id: 'accordion-pad', name: 'Acordion Pad FX',  engine: accordionPadSampleManager },
 ];
 
 // ---------------------------------------------------------------------------
@@ -101,11 +85,9 @@ export const INSTRUMENTS = runningOnIOS ? INSTRUMENTS_IOS : INSTRUMENTS_DESKTOP;
 
 /**
  * ID del instrumento por defecto al iniciar la aplicacion.
- * En iOS se selecciona 'mks-player' (Tone.Player directo) como default
- * para garantizar audio funcional desde el primer uso.
- * En desktop se mantiene 'mks-grain' (GrainPlayer).
+ * `mks-realistic` esta disponible en desktop (GrainPlayer) e iOS (Tone.Player).
  */
-export const DEFAULT_INSTRUMENT_ID = runningOnIOS ? 'mks-player' : 'mks-grain';
+export const DEFAULT_INSTRUMENT_ID = 'mks-realistic';
 
 /** Diccionario de instrumentos indexado por id para busqueda O(1). */
 export const INSTRUMENTS_BY_ID = Object.fromEntries(
