@@ -23,6 +23,8 @@
  *   iOS: SampleAudioManager /sounds-mks
  * - Acordion Pad FX (id: accordion-pad) — desktop: AccordionPadAudioManager;
  *   iOS: SampleAudioManager /sounds-accordion-pad
+ * - Shrutibox RC    (id: shruti-rc)     — todas las plataformas: SampleAudioManager
+ *   /sounds-shruti-mks (crossfade baked-in, loop desde 0)
  *
  * Para agregar un nuevo instrumento basta con importar su motor y anadir
  * una entrada a los arrays de instrumentos desktop e iOS.
@@ -42,6 +44,12 @@ const accordionPadManager  = new AccordionPadAudioManager('/sounds-accordion-pad
 
 const mksRealisticSampleManager  = new SampleAudioManager('/sounds-mks');
 const accordionPadSampleManager  = new SampleAudioManager('/sounds-accordion-pad');
+const shrutiRcManager            = new SampleAudioManager('/sounds-shruti-mks', {
+  loopStart: 0,
+  loopEnd: null,
+  fadeIn: 1.0,
+  fadeOut: 1.0,
+});
 
 // ---------------------------------------------------------------------------
 // Deteccion de plataforma
@@ -60,6 +68,7 @@ const runningOnIOS = isIOS();
 const INSTRUMENTS_DESKTOP = [
   { id: 'mks-realistic', name: 'MKS Realistic',    engine: mksRealisticManager },
   { id: 'accordion-pad', name: 'Acordion Pad FX',  engine: accordionPadManager },
+  { id: 'shruti-rc',     name: 'Shrutibox RC',      engine: shrutiRcManager },
 ];
 
 /**
@@ -70,6 +79,7 @@ const INSTRUMENTS_DESKTOP = [
 const INSTRUMENTS_IOS = [
   { id: 'mks-realistic', name: 'MKS Realistic',    engine: mksRealisticSampleManager },
   { id: 'accordion-pad', name: 'Acordion Pad FX',  engine: accordionPadSampleManager },
+  { id: 'shruti-rc',     name: 'Shrutibox RC',      engine: shrutiRcManager },
 ];
 
 // ---------------------------------------------------------------------------
