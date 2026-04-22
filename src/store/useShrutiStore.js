@@ -91,7 +91,7 @@ const useShrutiStore = create((set, get) => ({
   /**
    * Alterna la seleccion de una nota (toggle on/off).
    * Si el drone esta activo, tambien inicia o detiene el sonido en tiempo real.
-   * @param {string} noteId - ID de la nota (ej: 'sa', 're_komal')
+   * @param {string} noteId - ID de la nota (ej: 'C3', 'C3-sharp')
    */
   toggleNote: (noteId) => {
     const { selectedNotes, playing } = get();

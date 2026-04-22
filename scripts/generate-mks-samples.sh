@@ -8,7 +8,7 @@ set -e
 # Incluye las 7 notas shuddh + 4 komal + 1 tivra + Sa agudo = 13 notas.
 #
 # Estructura de salida (compatible con noteMap.js):
-#   public/sounds-mks/sa.mp3, re.mp3, re_komal.mp3, ..., sa_high.mp3
+#   public/sounds-mks/C3.mp3, D3.mp3, C3-sharp.mp3, ..., C4.mp3
 #
 # Requisitos: ffmpeg
 # Uso: bash scripts/generate-mks-samples.sh
@@ -27,8 +27,8 @@ BASE_DIR="public/sounds-mks"
 SAMPLE_RATE=44100
 BITRATE="192k"
 
-# Mapeo: fileKey:archivo_wav (13 notas cromaticas)
-NOTES="sa:sa3.wav re_komal:re3_komal.wav re:re3.wav ga_komal:ga3_komal.wav ga:ga3.wav ma:ma3.wav ma_tivra:ma3_tivra.wav pa:pa3.wav dha_komal:dha3_komal.wav dha:dha3.wav ni_komal:ni3_komal.wav ni:ni3.wav sa_high:sa4-high.wav"
+# Mapeo: fileKey:archivo_wav (13 notas cromaticas en nomenclatura occidental)
+NOTES="C3:sa3.wav C3-sharp:re3_komal.wav D3:re3.wav D3-sharp:ga3_komal.wav E3:ga3.wav F3:ma3.wav F3-sharp:ma3_tivra.wav G3:pa3.wav G3-sharp:dha3_komal.wav A3:dha3.wav B3_flat:ni3_komal.wav B3:ni3.wav C4:sa4-high.wav"
 
 for entry in $NOTES; do
   wav="${entry##*:}"

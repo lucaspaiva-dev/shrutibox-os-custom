@@ -16,7 +16,7 @@ set -e
 #   4. Normaliza y convierte a MP3 192kbps
 #
 # Estructura de salida (compatible con noteMap.js):
-#   public/sounds-mks-xfade/sa.mp3, re.mp3, re_komal.mp3, ..., sa_high.mp3
+#   public/sounds-mks-xfade/C3.mp3, D3.mp3, C3-sharp.mp3, ..., C4.mp3
 #
 # Requisitos: ffmpeg, bc
 # Uso: bash scripts/generate-mks-xfade-samples.sh
@@ -44,7 +44,7 @@ TRIM_START=1.0
 TRIM_END=23.0
 XFADE_DURATION=2.0
 
-NOTES="sa:sa3.wav re_komal:re3_komal.wav re:re3.wav ga_komal:ga3_komal.wav ga:ga3.wav ma:ma3.wav ma_tivra:ma3_tivra.wav pa:pa3.wav dha_komal:dha3_komal.wav dha:dha3.wav ni_komal:ni3_komal.wav ni:ni3.wav sa_high:sa4-high.wav"
+NOTES="C3:sa3.wav C3-sharp:re3_komal.wav D3:re3.wav D3-sharp:ga3_komal.wav E3:ga3.wav F3:ma3.wav F3-sharp:ma3_tivra.wav G3:pa3.wav G3-sharp:dha3_komal.wav A3:dha3.wav B3_flat:ni3_komal.wav B3:ni3.wav C4:sa4-high.wav"
 
 for entry in $NOTES; do
   wav="${entry##*:}"
@@ -65,6 +65,8 @@ skipped=0
 
 REGION_DURATION=$(echo "$TRIM_END - $TRIM_START" | bc -l)
 BODY_DURATION=$(echo "$REGION_DURATION - $XFADE_DURATION" | bc -l)
+FADE_OUT_ST=$(echo "$BODY_DURATION - $XFADE_DURATION" | bc -l)
+TAIL_PAD_DUR=$(echo "$BODY_DURATION - $XFADE_DURATION" | bc -l)
 
 echo "  Region: ${TRIM_START}s - ${TRIM_END}s (${REGION_DURATION}s)"
 echo "  Crossfade: ${XFADE_DURATION}s"
@@ -93,19 +95,16 @@ for entry in $NOTES; do
     -ar "$SAMPLE_RATE" -loglevel error \
     "$region_wav"
 
-  # Crossfade: mezclar la cola (fade-out) con la cabeza (fade-in) para
-  # que el archivo sea seamless al loopear de principio a fin.
-  #
-  # [0] = cuerpo principal (0 .. BODY_DURATION), con fade-out en los
-  #       ultimos XFADE_DURATION segundos
-  # [1] = cola (BODY_DURATION .. REGION_DURATION), con fade-in aplicado
-  #
-  # Se suman ambas senales al inicio del cuerpo para crear la transicion.
+  # Crossfade: en los primeros XFADE_DURATION s, cola (final del take) con
+  # fade-out se suma al cuerpo con fade-in; la cola va seguida de silencio
+  # (apad) hasta igualar el largo del cuerpo para que amix no corte la suma
+  # a los XFADE_DURATION s (evita click fuerte). Cuerpo con fade-out al final
+  # del archivo para cerrar el loop.
   ffmpeg -y -i "$region_wav" -filter_complex \
-    "[0]atrim=0:${BODY_DURATION},asetpts=PTS-STARTPTS[body]; \
-     [0]atrim=${BODY_DURATION}:${REGION_DURATION},asetpts=PTS-STARTPTS,afade=t=in:d=${XFADE_DURATION}[tail]; \
-     [body]afade=t=in:d=0.05,afade=t=out:st=$(echo "$BODY_DURATION - $XFADE_DURATION" | bc -l):d=${XFADE_DURATION}[body_faded]; \
-     [body_faded][tail]amix=inputs=2:duration=longest:normalize=0[out]" \
+    "[0]atrim=0:${BODY_DURATION},asetpts=PTS-STARTPTS,afade=t=in:d=${XFADE_DURATION},afade=t=out:st=${FADE_OUT_ST}:d=${XFADE_DURATION}[body_faded]; \
+     [0]atrim=${BODY_DURATION}:${REGION_DURATION},asetpts=PTS-STARTPTS,afade=t=out:st=0:d=${XFADE_DURATION}[tail_xf]; \
+     [tail_xf]apad=pad_dur=${TAIL_PAD_DUR}[tail_pad]; \
+     [body_faded][tail_pad]amix=inputs=2:duration=first:normalize=0[out]" \
     -map "[out]" -b:a "$BITRATE" -ar "$SAMPLE_RATE" -loglevel error \
     "$outfile"
 
