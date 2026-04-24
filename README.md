@@ -42,11 +42,13 @@ shrutibox-os-custom/
 │   ├── sounds/                 # Samples interpolados - Shrutibox Prototype (gitignored)
 │   ├── sounds-mks/             # Samples reales - Shrutibox MKS y MKS Grain (gitignored)
 │   ├── sounds-mks-xfade/       # Samples con crossfade baked-in - MKS Crossfade (gitignored)
+│   ├── sounds-shruti-mks/      # Samples recortados/procesados sin fades - Shrutibox RC (gitignored)
 │   └── sounds-accordion-pad/   # Samples pitch-shifted - Acordion Pad FX (gitignored)
 ├── scripts/
 │   ├── generate-samples.sh     # Genera 13 samples MP3 por pitch-shifting (Prototype)
 │   ├── generate-mks-samples.sh # Convierte 13 WAV a MP3 (MKS)
 │   ├── generate-mks-xfade-samples.sh # Genera MP3 con crossfade baked-in (MKS Crossfade)
+│   ├── generate-shruti-mks-samples.sh # Genera MP3 trim+procesados sin fades (Shrutibox RC)
 │   ├── generate-accordion-pad-samples.sh # Genera 13 samples por pitch-shifting (Acordion Pad FX)
 │   ├── generate-tones.sh       # Genera tonos sinusoidales placeholder
 │   └── install.sh              # Script de instalacion automatizada
@@ -308,6 +310,14 @@ bash scripts/generate-mks-xfade-samples.sh
 ```
 
 Toma los samples MKS y genera versiones con crossfade integrado en el audio: la cola del sample se mezcla con el inicio para que el loop sea suave. Los archivos se crean en `public/sounds-mks-xfade/`.
+
+### Shrutibox RC (samples recortados sin fades)
+
+```bash
+bash scripts/generate-shruti-mks-samples.sh
+```
+
+Toma las 13 grabaciones de `public/original-sounds/shrutibox-MKS-first-samplers/` y genera MP3 de 20 s (recorte 1.0 s – 21.0 s) con HPF/LPF, compresion leve, EQ suave y loudnorm. **Sin fades ni crossfade offline**: el fade-in inicial (2.5 s), el crossfade entre ciclos (3 s) y el fade-out al parar (1.5 s) los maneja `DroneSampleAudioManager` en runtime. Los archivos se crean en `public/sounds-shruti-mks/`.
 
 ### Acordion Pad FX (samples pitch-shifted)
 

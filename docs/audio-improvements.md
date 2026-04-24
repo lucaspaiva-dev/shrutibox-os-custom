@@ -132,6 +132,83 @@ El efecto se controla con un toggle **FX** en el mango izquierdo del panel princ
 
 ---
 
+### DroneSampleAudioManager (dual player cycling con Tone.Player) — iOS/iPad
+
+**Enfoque**: portar el patron de dual player cycling de `GrainAudioManager` a `Tone.Player`, haciendo viable el efecto drone continuo en iOS/iPad.
+
+**Motivacion**: `SampleAudioManager` usaba `Tone.Player` con `loop: true`. El problema es doble:
+
+1. Los parametros `fadeIn`/`fadeOut` del `Tone.Player` solo aplican al inicio/fin del playback general (`.start()` / `.stop()`), no en cada iteracion del loop. Cada salto de `loopEnd → loopStart` es un corte abrupto.
+2. El loop era muy corto (~4 s en la config por defecto), haciendo el click muy frecuente.
+
+Ademas, el efecto drone (fade-in gradual al inicio, sonido continuo sin oscilaciones, fade-out controlado al stop) no era reproducible con `loop: true` porque no hay forma de interponer un `Gain` individual por nota en ese flujo.
+
+**Implementacion**: `DroneSampleAudioManager` (motor activo para Shrutibox RC en todas las plataformas).
+
+#### Crossfade secuencial (estrategia actual)
+
+La v1 usaba un crossfade **simultaneo**: viejo baja mientras nuevo sube en paralelo (0.2 s). Aunque la suma de gains es matematicamente 1.0, el oido percibe una subida abrupta porque el player viejo esta en la posicion final del buffer (energia baja) mientras el nuevo arranca desde `cycleStart` (energia plena).
+
+La v2 usa un crossfade **secuencial** (misma estrategia de `RealisticGrainAudioManager`):
+
+```
+t=0s:    nuevo player arranca @ cycleStart  → newGain: 0 → 1 (0.5s)  │  oldGain: 1 (sin cambio)
+t=0.3s:  viejo empieza a bajar                                         │  oldGain: 1 → 0 (0.5s)
+t=0.5s:  newGain = 1 (pleno volumen)                                   │  oldGain: 0.6
+t=0.8s:  oldGain = 0 (silencio) → dispose                             │  newGain: 1
+
+Gain total:  1 ──── sube hasta ~1.6 (t≈0.4s) ──── vuelve a 1 ──── sin gap ni subida abrupta
+```
+
+El viejo NO empieza a bajar hasta que el nuevo ya esta establecido. Hay un breve solapamiento donde ambos suenan (gain total > 1), lo que produce un "swell" suave — perceptiblemente mucho mejor que el gap o la subida abrupta del crossfade simultaneo.
+
+```
+Player A (loop:false):  [=== loopStart ════════════════════════ end]──old fade (0.5s)──(dispose)
+                                                                  ↑
+                                             timer dispara aqui (0.8s antes del end)
+                                                                  │
+Player B (loop:false):              [=== cycleStart ══════════   │  continua...
+                                    │ new gain: 0→1 (0.5s)       │
+                                    ├── t=0s: new arranca
+                                    ├── t=0.3s: old empieza a bajar (overlapDelay)
+                                    └── t=0.5s: new en pleno volumen
+                                        t=0.8s: old llega a 0, coincide con fin buffer
+```
+
+Al parar: `clearTimeout(cycleTimer)`, `gain.rampTo(0, fadeOut)` (1.5 s), dispose delayed.
+
+**Diferencia con GrainAudioManager**: usa `Tone.Player` en lugar de `Tone.GrainPlayer`. Sin granularidad ni overlap de granos; el timbre es el del sample sin procesamiento. La logica de ciclo, crossfade secuencial y control de gain es identica. Esto lo hace compatible con iOS/iPad donde GrainPlayer falla.
+
+**Parametros por defecto**:
+
+```javascript
+{
+  loopStart: 0.01,          // offset inicial (evita padding del decoder MP3)
+  loopEnd: null,            // duracion completa del buffer
+  cycleStart: 1.0,          // zona estable del drone (ciclos de sostenimiento)
+  cycleFadeIn: 0.5,         // nuevo player sube 0→1 durante este tiempo (s)
+  cycleOverlapDelay: 0.3,   // segundos que el viejo espera antes de iniciar su fade;
+                            // permite que el nuevo se establezca primero.
+                            // Debe ser <= cycleFadeIn para evitar un gap.
+  cycleFadeOut: 0.5,        // viejo player baja 1→0 durante este tiempo (s).
+                            // totalAdvance = cycleOverlapDelay + cycleFadeOut = 0.8 s
+                            // (el timer dispara 0.8 s antes del fin del buffer)
+  initialFadeIn: 2.5,       // fade-in suave solo al arrancar la nota (s)
+  fadeIn: 0.08,             // fade base escalable con setSpeed
+  fadeOut: 1.5,             // fade-out controlado al stop (s)
+}
+```
+
+**Assets de audio** (`public/sounds-shruti-mks/`): generados con `scripts/generate-shruti-mks-samples.sh`. Son trims limpios de 20 s (1.0 s – 21.0 s del WAV original) con HPF/LPF, compresion leve, EQ suave y loudnorm. **No contienen fades ni crossfade offline**: el fade-in inicial (2.5 s), el crossfade secuencial entre ciclos y el fade-out al parar (1.5 s) los maneja `DroneSampleAudioManager` en runtime mediante nodos `Tone.Gain` individuales.
+
+**Instrumento de prueba**: Shrutibox RC (`shruti-rc`) en todas las plataformas. Los motores de MKS Realistic y Acordion Pad FX en iOS siguen usando `SampleAudioManager` como fallback; `SampleAudioManager` queda deprecado para nuevos instrumentos.
+
+**Ventajas**: sin clicks posibles (no se usa loop built-in); crossfade secuencial sin subidas abruptas ni gaps; fade-in y fade-out completamente controlados; compatible con iOS (Tone.Player es fiable en WebKit); mismo patron que los motores granulares de desktop.
+
+**Desventajas**: sin textura granular (timbre mas plano que GrainPlayer); dos Players por nota durante la ventana de solapamiento (~0.8 s cada ciclo).
+
+---
+
 ## Soluciones no implementadas (futuras)
 
 Las siguientes opciones fueron evaluadas pero no implementadas. Se documentan para referencia en caso de querer explorarlas.

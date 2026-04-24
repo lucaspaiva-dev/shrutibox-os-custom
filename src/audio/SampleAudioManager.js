@@ -1,19 +1,25 @@
 /**
  * @fileoverview Motor de audio basado en samples pregrabados.
  *
- * Alternativa al AudioManager sintetico: reproduce samples de audio reales
- * (archivos MP3) con loop continuo para generar el drone del shrutibox.
- * Cada nota carga su propio buffer desde una ruta construida a partir del
- * basePath configurado en el constructor.
+ * @deprecated Desde la introduccion de DroneSampleAudioManager.
+ * Mantenido por retrocompatibilidad: los instrumentos iOS mks-realistic y
+ * accordion-pad siguen usandolo como fallback. Para nuevos instrumentos que
+ * requieran efecto drone continuo (fade-in al inicio, sin clicks de loop,
+ * fade-out controlado al stop), usar DroneSampleAudioManager en su lugar.
  *
- * Usa Tone.Player con loop seamless (loopStart/loopEnd + fadeIn/fadeOut).
- * Exporta la clase para permitir multiples instancias con distintos conjuntos
- * de samples y configuraciones de loop.
+ * ## Limitacion conocida
  *
- * Instancias actuales:
- * - basePath='/sounds'          → samples interpolados (Shrutibox Prototype)
- * - basePath='/sounds-mks'      → grabaciones reales (Shrutibox MKS)
- * - basePath='/sounds-mks-xfade'→ grabaciones con crossfade baked-in (MKS Crossfade)
+ * Tone.Player con `loop: true` produce un click audible cada vez que salta
+ * de loopEnd a loopStart. Los parametros `fadeIn` y `fadeOut` del Player
+ * solo aplican al inicio y fin de la reproduccion general (.start() / .stop()),
+ * no en los puntos de loop. Ver docs/audio-improvements.md para el historial
+ * completo de esta limitacion y la solucion implementada en DroneSampleAudioManager.
+ *
+ * ## Instancias actuales (retrocompatibilidad)
+ * - basePath='/sounds-mks'      → iOS fallback para MKS Realistic
+ * - basePath='/sounds-accordion-pad' → iOS fallback para Acordion Pad FX
+ * - basePath='/sounds'          → Shrutibox Prototype (samples interpolados)
+ * - basePath='/sounds-mks-xfade'→ MKS Crossfade (grabaciones con crossfade baked-in)
  */
 
 import * as Tone from 'tone';
@@ -26,6 +32,10 @@ const LOOP_DEFAULTS = {
   fadeOut: 0.08,
 };
 
+/**
+ * @deprecated Usar DroneSampleAudioManager para nuevos instrumentos que requieran
+ * efecto drone continuo. Esta clase se mantiene para retrocompatibilidad.
+ */
 class SampleAudioManager {
   /**
    * @param {string} basePath - Directorio base de los samples (ej: '/sounds', '/sounds-mks').

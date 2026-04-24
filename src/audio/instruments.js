@@ -23,14 +23,15 @@
  *   iOS: SampleAudioManager /sounds-mks
  * - Acordion Pad FX (id: accordion-pad) — desktop: AccordionPadAudioManager;
  *   iOS: SampleAudioManager /sounds-accordion-pad
- * - Shrutibox RC    (id: shruti-rc)     — todas las plataformas: SampleAudioManager
- *   /sounds-shruti-mks (crossfade baked-in, loop desde 0)
+ * - Shrutibox RC    (id: shruti-rc)     — todas las plataformas: DroneSampleAudioManager
+ *   /sounds-shruti-mks (dual player cycling, fade-in/out controlado, sin clicks de loop)
  *
  * Para agregar un nuevo instrumento basta con importar su motor y anadir
  * una entrada a los arrays de instrumentos desktop e iOS.
  */
 
 import SampleAudioManager from './SampleAudioManager';
+import DroneSampleAudioManager from './DroneSampleAudioManager';
 import RealisticGrainAudioManager from './RealisticGrainAudioManager';
 import AccordionPadAudioManager from './AccordionPadAudioManager';
 import isIOS from './isIOS';
@@ -44,11 +45,20 @@ const accordionPadManager  = new AccordionPadAudioManager('/sounds-accordion-pad
 
 const mksRealisticSampleManager  = new SampleAudioManager('/sounds-mks');
 const accordionPadSampleManager  = new SampleAudioManager('/sounds-accordion-pad');
-const shrutiRcManager            = new SampleAudioManager('/sounds-shruti-mks', {
-  loopStart: 0,
+
+// DroneSampleAudioManager: dual player cycling con Tone.Player.
+// Usado en todas las plataformas para Shrutibox RC como banco de pruebas del
+// efecto drone continuo en iOS. Sustituye al SampleAudioManager anterior que
+// usaba loop:true con click audible en cada iteracion.
+const shrutiRcDroneManager = new DroneSampleAudioManager('/sounds-shruti-mks', {
+  loopStart: 0.01,
   loopEnd: null,
-  fadeIn: 1.0,
-  fadeOut: 1.0,
+  cycleStart: 1.0,
+  cycleFadeIn: 0.5,
+  cycleOverlapDelay: 0.3,
+  cycleFadeOut: 0.5,
+  initialFadeIn: 2.5,
+  fadeOut: 1.5,
 });
 
 // ---------------------------------------------------------------------------
@@ -68,7 +78,7 @@ const runningOnIOS = isIOS();
 const INSTRUMENTS_DESKTOP = [
   { id: 'mks-realistic', name: 'MKS Realistic',    engine: mksRealisticManager },
   { id: 'accordion-pad', name: 'Acordion Pad FX',  engine: accordionPadManager },
-  { id: 'shruti-rc',     name: 'Shrutibox RC',      engine: shrutiRcManager },
+  { id: 'shruti-rc',     name: 'Shrutibox RC',      engine: shrutiRcDroneManager },
 ];
 
 /**
@@ -79,7 +89,7 @@ const INSTRUMENTS_DESKTOP = [
 const INSTRUMENTS_IOS = [
   { id: 'mks-realistic', name: 'MKS Realistic',    engine: mksRealisticSampleManager },
   { id: 'accordion-pad', name: 'Acordion Pad FX',  engine: accordionPadSampleManager },
-  { id: 'shruti-rc',     name: 'Shrutibox RC',      engine: shrutiRcManager },
+  { id: 'shruti-rc',     name: 'Shrutibox RC',      engine: shrutiRcDroneManager },
 ];
 
 // ---------------------------------------------------------------------------

@@ -25,7 +25,7 @@
 **Documentación relacionada en `docs/`:**
 
 - `[architecture.md](architecture.md)` — arquitectura general y lista de componentes.
-- `[audio-improvements.md](audio-improvements.md)` — clicks de loop, chorus, dual player cycling.
+- `[audio-improvements.md](audio-improvements.md)` — clicks de loop, chorus, dual player cycling, DroneSampleAudioManager.
 - `[realistic-engine.md](realistic-engine.md)` — bellows stagger / release del motor realista.
 - `[src/audio/IOS_AUDIO_COMPAT.md](../src/audio/IOS_AUDIO_COMPAT.md)` — desbloqueo de contexto y bugs Tone/WebKit.
 
@@ -33,7 +33,7 @@
 
 ## 2. Contexto del dominio
 
-Un **shruti box** (en este producto, réplica digital de un **Monoj Kumar Sardar 440 Hz**) es un instrumento de **drone sostenido**: múltiples lengüetas seleccionables, aire del fuelle, timbre orgánico y evolución temporal del sonido. La **calidad percibida** no es solo “sin clicks”: importan el **onset** (cómo entran las notas), la **textura** (granularidad vs sample plano), los **cruces de loop** y efectos como **chorus** sutil para bocinas mono.
+Un **shruti box** (en este producto, réplica digital de un **Monoj Kumar Sardar 440 Hz**) es un instrumento de **drone sostenido**: múltiples lengüetas seleccionables, aire del fuelle, timbre orgánico y evolución temporal del sonido. La **calidad percibida** no es solo "sin clicks": importan el **onset** (cómo entran las notas), la **textura** (granularidad vs sample plano), los **cruces de loop** y efectos como **chorus** sutil para bocinas mono.
 
 La app es una **SPA web** (no hay binario nativo iOS); en iPhone/iPad corre en **Safari / WebKit** (todos los navegadores en iOS usan el mismo motor).
 
@@ -62,7 +62,8 @@ flowchart TB
     Engine[audioEngine.js]
     Realistic[RealisticGrainAudioManager.js]
     Accordion[AccordionPadAudioManager.js]
-    Sample[SampleAudioManager.js]
+    Drone[DroneSampleAudioManager.js]
+    Sample["SampleAudioManager.js (deprecated)"]
     MetroEng[metronomeEngine.js]
   end
   App --> Unlock
@@ -74,6 +75,7 @@ flowchart TB
   Shruti --> Inst
   Inst --> Realistic
   Inst --> Accordion
+  Inst --> Drone
   Inst --> Sample
   Metro --> MetroEng
 ```
@@ -96,22 +98,23 @@ flowchart TB
 ### 3.3 Capa audio (`src/audio/`)
 
 
-| Archivo                                                                       | Responsabilidad                                                                                                       |
-| ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `[audioEngine.js](../src/audio/audioEngine.js)`                               | Proxy singleton: `setEngine`, delegación a motor activo; `setChorusEnabled` con optional chaining.                    |
-| `[instruments.js](../src/audio/instruments.js)`                               | Registro de instrumentos; **fallback iOS** (`INSTRUMENTS_IOS` vs `INSTRUMENTS_DESKTOP`).                              |
-| `[unlockAudio.js](../src/audio/unlockAudio.js)`                               | `Tone.start()` + silent buffer trick + verificación `running`.                                                        |
-| `[isIOS.js](../src/audio/isIOS.js)`                                           | Detección iOS / iPadOS (incl. iPad con `MacIntel` + `maxTouchPoints > 1`).                                            |
-| `[noteMap.js](../src/audio/noteMap.js)`                                       | 13 notas, rutas de samples (`fileKey`).                                                                               |
-| `[RealisticGrainAudioManager.js](../src/audio/RealisticGrainAudioManager.js)` | Motor **desktop** principal: `GrainPlayer`, dual cycling, bellows, chorus.                                            |
-| `[AccordionPadAudioManager.js](../src/audio/AccordionPadAudioManager.js)`     | Motor granular **desktop** para pad de acordeón.                                                                      |
-| `[SampleAudioManager.js](../src/audio/SampleAudioManager.js)`                 | Motor `**Tone.Player`** con loop; usado en **iOS** como fallback.                                                     |
-| `[GrainAudioManager.js](../src/audio/GrainAudioManager.js)`                   | Motor granular histórico / referencia (no está en la lista activa de `instruments.js` en la versión actual descrita). |
-| `[AudioManager.js](../src/audio/AudioManager.js)`                             | Sintesis PolySynth; motor por defecto del proxy hasta `init()`.                                                       |
-| `[metronomeEngine.js](../src/audio/metronomeEngine.js)`                       | Metrónomo (`Transport` + `Synth`).                                                                                    |
+| Archivo | Responsabilidad |
+| ------- | --------------- |
+| `[audioEngine.js](../src/audio/audioEngine.js)` | Proxy singleton: `setEngine`, delegación a motor activo; `setChorusEnabled` con optional chaining. |
+| `[instruments.js](../src/audio/instruments.js)` | Registro de instrumentos; **fallback iOS** (`INSTRUMENTS_IOS` vs `INSTRUMENTS_DESKTOP`). |
+| `[unlockAudio.js](../src/audio/unlockAudio.js)` | `Tone.start()` + silent buffer trick + verificación `running`. |
+| `[isIOS.js](../src/audio/isIOS.js)` | Detección iOS / iPadOS (incl. iPad con `MacIntel` + `maxTouchPoints > 1`). |
+| `[noteMap.js](../src/audio/noteMap.js)` | 13 notas, rutas de samples (`fileKey`). |
+| `[RealisticGrainAudioManager.js](../src/audio/RealisticGrainAudioManager.js)` | Motor **desktop** principal: `GrainPlayer`, dual cycling, bellows, chorus. |
+| `[AccordionPadAudioManager.js](../src/audio/AccordionPadAudioManager.js)` | Motor granular **desktop** para pad de acordeón. |
+| `[DroneSampleAudioManager.js](../src/audio/DroneSampleAudioManager.js)` | Motor **Tone.Player** con dual player cycling: fade-in suave, sin clicks de loop, fade-out controlado. Activo para Shrutibox RC en todas las plataformas. |
+| `[SampleAudioManager.js](../src/audio/SampleAudioManager.js)` | **[DEPRECADO]** `Tone.Player` con loop nativo; fallback iOS para mks-realistic y accordion-pad. Mantenido por retrocompatibilidad. |
+| `[GrainAudioManager.js](../src/audio/GrainAudioManager.js)` | Motor granular histórico / referencia (no está en la lista activa de `instruments.js`). |
+| `[AudioManager.js](../src/audio/AudioManager.js)` | Sintesis PolySynth; motor por defecto del proxy hasta `init()`. |
+| `[metronomeEngine.js](../src/audio/metronomeEngine.js)` | Metrónomo (`Transport` + `Synth`). |
 
 
-Samples estáticos en `public/`: `sounds-mks/`, `sounds-accordion-pad/`, `sounds-mks-xfade/` (xfade preprocesado, útil como alternativa de calidad).
+Samples estáticos en `public/`: `sounds-mks/`, `sounds-accordion-pad/`, `sounds-mks-xfade/` (xfade preprocesado, útil como alternativa de calidad), `sounds-shruti-mks/` (Shrutibox RC — trims de 20 s sin fades; fades y crossfades en runtime via `DroneSampleAudioManager`).
 
 ---
 
@@ -121,13 +124,13 @@ Samples estáticos en `public/`: `sounds-mks/`, `sounds-accordion-pad/`, `sounds
 
 - Exporta un **singleton** `audioEngine` construido inicialmente con `AudioManager` (sintético).
 - Tras `useShrutiStore.init()`, el motor real se asigna con `audioEngine.setEngine(instrument.engine)`.
-- `**setChorusEnabled`** delega con `this._engine.setChorusEnabled?.(enabled)` — si el motor no implementa el método (p. ej. `SampleAudioManager`), el toggle **no hace nada** en audio.
+- `**setChorusEnabled`** delega con `this._engine.setChorusEnabled?.(enabled)` — si el motor no implementa el método (p. ej. `DroneSampleAudioManager` en esta versión), el toggle **no hace nada** en audio.
 
 ### 4.2 Registro dual por plataforma `[instruments.js](../src/audio/instruments.js)`
 
 - `**runningOnIOS = isIOS()`** elige entre `INSTRUMENTS_DESKTOP` e `INSTRUMENTS_IOS`.
-- **Desktop:** `mks-realistic` → `RealisticGrainAudioManager('/sounds-mks')`; `accordion-pad` → `AccordionPadAudioManager('/sounds-accordion-pad')`.
-- **iOS:** los mismos IDs de instrumento y nombres en UI, pero motores `**SampleAudioManager`** apuntando a los mismos MP3.
+- **Desktop:** `mks-realistic` → `RealisticGrainAudioManager('/sounds-mks')`; `accordion-pad` → `AccordionPadAudioManager('/sounds-accordion-pad')`; `shruti-rc` → `DroneSampleAudioManager('/sounds-shruti-mks')`.
+- **iOS:** `mks-realistic` → `SampleAudioManager('/sounds-mks')`; `accordion-pad` → `SampleAudioManager('/sounds-accordion-pad')`; `shruti-rc` → `DroneSampleAudioManager('/sounds-shruti-mks')`.
 
 **Motivo del fallback (resumen):** `Tone.GrainPlayer` en WebKit iOS puede quedar en **silencio total** (reloj interno / callbacks no fiables; issues Tone #572, #1051). `Tone.Player` crea `AudioBufferSourceNode` de forma directa y **sí reproduce**.
 
@@ -137,13 +140,31 @@ Samples estáticos en `public/`: `sounds-mks/`, `sounds-accordion-pad/`, `sounds
 
 `Tone.GrainPlayer` → `Tone.Gain` (por nota / crossfade) → `Tone.Volume` → `**Tone.Chorus`** → destino.
 
-**iOS (`SampleAudioManager`):**
+**iOS fallback (`SampleAudioManager` — deprecado, solo mks/accordion):**
 
-`Tone.Player` → `Tone.Volume` → destino (**sin** nodo chorus en el motor; el toggle FX no altera el timbre en iOS salvo que se implemente `setChorusEnabled` en ese motor).
+`Tone.Player` → `Tone.Volume` → destino (**sin** nodo chorus; el toggle FX no altera el timbre).
 
-### 4.4 Parámetros críticos de `SampleAudioManager`
+**Shrutibox RC — todas las plataformas (`DroneSampleAudioManager`):**
 
-Por defecto en clase: `loopStart: 1.0`, `loopEnd: 5.0`, fades cortos. Eso implica un **loop de ~4 s** con **salto** en el punto de loop — los `fadeIn`/`fadeOut` del `Tone.Player` **no suavizan cada iteración del loop**, solo arranque/parada del player (ver `[audio-improvements.md](audio-improvements.md)`).
+`Tone.Player (loop:false)` → `Tone.Gain` (por nota / crossfade) → `Tone.Volume` → destino.
+
+### 4.4 `SampleAudioManager` (deprecado)
+
+> **Nota:** `SampleAudioManager` está deprecado para nuevos instrumentos. Actualmente solo activo como fallback iOS para `mks-realistic` y `accordion-pad`. Para nuevos instrumentos con efecto drone, usar `DroneSampleAudioManager`.
+
+Configuración por defecto: `loopStart: 1.0`, `loopEnd: 5.0`, fades cortos. Los `fadeIn`/`fadeOut` del `Tone.Player` **no suavizan cada iteración del loop**, solo arranque/parada (ver `[audio-improvements.md](audio-improvements.md)`).
+
+### 4.5 `DroneSampleAudioManager` — efecto drone en iOS/iPad
+
+Motor activo para Shrutibox RC en todas las plataformas. Porta el patrón de dual player cycling de `GrainAudioManager` a `Tone.Player`:
+
+- `Tone.Player (loop:false)` + `Tone.Gain(0)` individual por nota.
+- Al arrancar: `gain.rampTo(1, initialFadeIn)` — fade-in suave de 2.5 s.
+- Timer → crossfade automático (3 s) entre Player saliente y entrante antes de alcanzar el fin del buffer.
+- Al parar: `gain.rampTo(0, fadeOut)` — fade-out controlado de 1.5 s.
+- Sin uso del loop built-in → sin clicks posibles.
+
+Ver `[audio-improvements.md](audio-improvements.md)` sección "DroneSampleAudioManager" para diagrama y parámetros completos.
 
 ---
 
@@ -156,15 +177,16 @@ Por defecto en clase: `loopStart: 1.0`, `loopEnd: 5.0`, fades cortos. Eso implic
 - **Orden en UI:** en `[App.jsx](../src/App.jsx)`, el handler de inicio debe `await unlockAudio()` **antes** de otras operaciones async pesadas.
 - **Post-background:** en `[useShrutiStore.js](../src/store/useShrutiStore.js)`, `togglePlay` comprueba `Tone.getContext().rawContext.state` y llama `resume()` si no está `running`.
 
-### 5.2 Capa 2: GrainPlayer vs Player (pérdida de calidad)
+### 5.2 Capa 2: calidad del drone según motor
 
-
-| Aspecto                   | Desktop (`RealisticGrainAudioManager`)                                        | iOS (`SampleAudioManager`)                              |
-| ------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------- |
-| Técnica principal         | Granular + **dual player cycling** (sin depender del loop built-in del grano) | **Loop built-in** del `Tone.Player`                     |
-| Bellows stagger / release | Sí (`playNotes` / `stopNotes` con delays y fades escalados)                   | No (arranques/paradas más “digitales”)                  |
-| Chorus FX                 | `setChorusEnabled` ajusta `wet`                                               | Método **no implementado** → silencio funcional del FX  |
-| Loop seamless             | Crossfade entre instancias nuevas/viejas                                      | Riesgo de **click** cada vuelta de loop en región corta |
+| Aspecto | Desktop granular | iOS fallback (`SampleAudioManager`) | Shrutibox RC (`DroneSampleAudioManager`) |
+| ------- | ---------------- | ----------------------------------- | ---------------------------------------- |
+| Técnica | Granular + dual cycling (GrainPlayer) | Loop built-in Tone.Player | Dual player cycling (Tone.Player) |
+| Fade-in inicial | `initialFadeIn` vía Gain (2.5 s) | `fadeIn` del Player (solo arranque) | `initialFadeIn` vía Gain (2.5 s) |
+| Fade-out al stop | `rampTo(0)` vía Gain | `fadeOut` del Player (0.08 s) | `rampTo(0, 1.5 s)` vía Gain |
+| Loop seamless | Crossfade programático sin clicks | Click cada ~4 s en punto de loop | Crossfade programático sin clicks |
+| Bellows stagger | Sí (delays por semitono) | No | No (mejora futura) |
+| Chorus FX | `setChorusEnabled` ajusta `wet` | No implementado | No implementado (mejora futura) |
 
 
 Referencias de issues (para búsqueda y contexto): [Tone #572](https://github.com/Tonejs/Tone.js/issues/572), [Tone #1051](https://github.com/Tonejs/Tone.js/issues/1051), [Tone #1225](https://github.com/Tonejs/Tone.js/issues/1225) (chorus/LFO en WebKit), [WebKit 248265](https://bugs.webkit.org/show_bug.cgi?id=248265).
@@ -177,41 +199,45 @@ Referencias de issues (para búsqueda y contexto): [Tone #572](https://github.co
 
 1. **Compatibilidad iOS:** audio audible frente al bug de `GrainPlayer`.
 2. **Desbloqueo centralizado** — evita múltiples `Tone.start()` en competencia (comentarios en motores).
-3. **Detección iOS** razonablemente completa (incluye iPad “desktop UA”).
+3. **Detección iOS** razonablemente completa (incluye iPad "desktop UA").
 4. **Interfaz uniforme** entre motores + proxy defensivo (`?.`).
 5. **Diagnóstico in-app** (`AudioDebug`) sin cable.
 6. **Documentación interna** (`IOS_AUDIO_COMPAT.md`) con historial de iteraciones.
+7. **Shrutibox RC** con efecto drone real en iOS/iPad vía `DroneSampleAudioManager`.
 
 ### Debilidades / riesgos
 
-1. **Pérdida de fidelidad sonora** vs desktop (ver tabla §5.2).
-2. `**SampleAudioManager` + loop corto** → clicks de loop **más frecuentes** que en el motor granular.
-3. **Chorus** no aplicado en iOS aunque la UI sugiera lo contrario.
+1. **Pérdida de fidelidad sonora** en iOS para mks-realistic/accordion-pad (ver tabla §5.2).
+2. **`SampleAudioManager` (deprecado) + loop corto** → clicks de loop frecuentes en mks/accordion iOS.
+3. **Chorus** no aplicado en iOS para ningún instrumento en esta versión.
 4. **Assets `sounds-mks-xfade/`** ya preparados para loop seamless **no** enlazados en `INSTRUMENTS_IOS`.
 5. **No re-evaluación** reciente documentada de `GrainPlayer` en iOS 17/18 + Tone 15.x.
-6. `**architecture.md`** puede quedar desalineado respecto a la lista exacta de instrumentos en `instruments.js` — la fuente de verdad es el código.
 
 ---
 
 ## 7. Mejoras posibles (priorización sugerida)
 
-### A. Rápidas (bajo riesgo)
+### A. Completadas
 
-- Implementar `**setChorusEnabled**` en `SampleAudioManager` (misma cadena que motores granulares: `Volume` → `Chorus` → destino, `wet` 0 / 0.3).
-- Ajustar `**loopEnd**` en iOS (p. ej. `null` = duración completa) o usar región más larga para **reducir frecuencia** de discontinuidades.
-- **Bellows stagger** portado a `SampleAudioManager` vía `setTimeout` + orden cromático (reutilizar lógica de índices como en `RealisticGrainAudioManager`).
+- **DroneSampleAudioManager** para Shrutibox RC: drone continuo sin clicks en iOS, fade-in/out controlados.
 
-### B. Calidad de loop sin granularidad
+### B. Próximas (bajo riesgo)
 
-- Instanciar `SampleAudioManager` en iOS con `**basePath: '/sounds-mks-xfade'`** y opciones `loopStart: 0`, `loopEnd: null` (crossfade offline — ver `scripts/generate-mks-xfade-samples.sh` y `[audio-improvements.md](audio-improvements.md)`).
+- Implementar `**setChorusEnabled**` en `DroneSampleAudioManager` (misma cadena que motores granulares: `Volume` → `Chorus` → destino).
+- **Bellows stagger** portado a `DroneSampleAudioManager` vía `setTimeout` + orden cromático.
+- Aplicar `DroneSampleAudioManager` también a `mks-realistic` y `accordion-pad` en iOS (reemplazar `SampleAudioManager` deprecado).
 
-### C. Investigación / mayor esfuerzo
+### C. Calidad de loop sin granularidad
+
+- Instanciar `DroneSampleAudioManager` en iOS con `basePath: '/sounds-mks-xfade'` y `loopStart: 0`, `loopEnd: null` para eliminar completamente los clicks de los samples MKS en iOS.
+
+### D. Investigación / mayor esfuerzo
 
 - Probar de nuevo `**GrainPlayer**` en dispositivos iOS recientes y Tone 15.x; si funciona, feature-flag o detección por versión.
 - **AudioWorklet** para granulación o crossfade con scheduling explícito.
 - **Zero-crossing** u optimización de puntos de loop en cliente.
 
-### D. No recomendado (documentado)
+### E. No recomendado (documentado)
 
 - Polyfill profundo del reloj interno de Tone en WebKit.
 - `**MediaElementAudioSourceNode`** como base principal del drone (regresiones históricas en iOS 17.x en documentación del proyecto).
@@ -221,19 +247,20 @@ Referencias de issues (para búsqueda y contexto): [Tone #572](https://github.co
 ## 8. Guía rápida para agentes (dónde tocar qué)
 
 
-| Objetivo                          | Archivo(s)                                                                                                                                               |
-| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Cambiar motor iOS vs desktop      | `[instruments.js](../src/audio/instruments.js)`                                                                                                          |
-| Ajustar loop / fades del fallback | `[SampleAudioManager.js](../src/audio/SampleAudioManager.js)` + opciones en `instruments.js` al construir instancias iOS                                 |
-| Lógica granular / bellows         | `[RealisticGrainAudioManager.js](../src/audio/RealisticGrainAudioManager.js)`, `[AccordionPadAudioManager.js](../src/audio/AccordionPadAudioManager.js)` |
-| Desbloqueo / silent buffer        | `[unlockAudio.js](../src/audio/unlockAudio.js)`, `[App.jsx](../src/App.jsx)`                                                                             |
-| Resume tras background            | `[useShrutiStore.js](../src/store/useShrutiStore.js)` `togglePlay`                                                                                       |
-| Detección plataforma              | `[isIOS.js](../src/audio/isIOS.js)`                                                                                                                      |
-| Proxy / chorus opcional           | `[audioEngine.js](../src/audio/audioEngine.js)`                                                                                                          |
-| Debug in-app                      | `[AudioDebug.jsx](../src/components/AudioDebug.jsx)`                                                                                                     |
+| Objetivo | Archivo(s) |
+| -------- | ---------- |
+| Cambiar motor iOS vs desktop | `[instruments.js](../src/audio/instruments.js)` |
+| Ajustar parámetros drone (cycleStart, xfade, fades) | `[DroneSampleAudioManager.js](../src/audio/DroneSampleAudioManager.js)` + opciones en `instruments.js` |
+| Ajustar loop / fades fallback iOS (mks/accordion) | `[SampleAudioManager.js](../src/audio/SampleAudioManager.js)` + opciones en `instruments.js` |
+| Lógica granular / bellows | `[RealisticGrainAudioManager.js](../src/audio/RealisticGrainAudioManager.js)`, `[AccordionPadAudioManager.js](../src/audio/AccordionPadAudioManager.js)` |
+| Desbloqueo / silent buffer | `[unlockAudio.js](../src/audio/unlockAudio.js)`, `[App.jsx](../src/App.jsx)` |
+| Resume tras background | `[useShrutiStore.js](../src/store/useShrutiStore.js)` `togglePlay` |
+| Detección plataforma | `[isIOS.js](../src/audio/isIOS.js)` |
+| Proxy / chorus opcional | `[audioEngine.js](../src/audio/audioEngine.js)` |
+| Debug in-app | `[AudioDebug.jsx](../src/components/AudioDebug.jsx)` |
 
 
-**Señales de que un bug es “el de iOS”:** solo ocurre en iPhone/iPad; el contexto está `suspended`; o hay silencio con `GrainPlayer` pero no con `Player`.
+**Señales de que un bug es "el de iOS":** solo ocurre en iPhone/iPad; el contexto está `suspended`; o hay silencio con `GrainPlayer` pero no con `Player`.
 
 **Pruebas:** Safari en dispositivo real; menú **Desarrollar** en Safari macOS + inspector remoto; panel triple-tap en footer.
 
