@@ -27,10 +27,11 @@ src/
 │
 ├── audio/
 │   ├── audioEngine.js            # Proxy mutable: delega al motor de audio activo
-│   ├── instruments.js            # Registro de instrumentos disponibles (MKS Drone, MKS Realistic, Acordion Pad FX)
+│   ├── instruments.js            # Registro de instrumentos disponibles (MKS Drone, MKS Realistic, Acordion Pad FX, Shrutibox RC)
 │   ├── metronomeEngine.js        # Motor de audio del metrónomo (Tone.Synth + Transport)
 │   ├── AudioManager.js           # Motor de sintesis (PolySynth fatsine) — oculto
-│   ├── SampleAudioManager.js     # Motor de samples (Tone.Player con loop) — oculto
+│   ├── DroneSampleAudioManager.js # Motor drone (Tone.Player + dual player cycling) — Shrutibox RC
+│   ├── SampleAudioManager.js     # [DEPRECADO] Motor de samples (Tone.Player con loop) — iOS fallback mks/accordion
 │   ├── GrainAudioManager.js      # Motor granular (dual player cycling con crossfade) — MKS Drone
 │   ├── RealisticGrainAudioManager.js  # GrainAudioManager + bellows stagger — MKS Realistic
 │   ├── AccordionPadAudioManager.js    # Motor granular para pad de acordeon — Acordion Pad FX
@@ -116,7 +117,13 @@ La aplicacion sigue una separacion clara en tres capas:
 │   │   Tone.GrainPlayer, dual player cycling, granos 0.8s             │       │
 │   └──────────────────────────────┬────────────────────────────────────┘       │
 │                                  │                                            │
-│                                        ▼                                      │
+│   ┌──────────────────────────────┴────────────────────────────────────┐       │
+│   │   DroneSampleAudioManager (Shrutibox RC — activo, todas plat.)    │       │
+│   │   /sounds-shruti-mks/                                              │       │
+│   │   Tone.Player (loop:false), dual player cycling, crossfade 3s     │       │
+│   │   initialFadeIn 2.5s — fadeOut 1.5s — sin clicks de loop          │       │
+│   └──────────────────────────────┬────────────────────────────────────┘       │
+│                                  │                                            │
 │                                 Tone.Volume (-6dB)                            │
 │                                        ▼                                      │
 │                   Tone.Chorus (wet:0.3 si activo / wet:0 si inactivo)         │
@@ -126,7 +133,7 @@ La aplicacion sigue una separacion clara en tres capas:
 │   noteMap.js: 13 notas cromaticas (Sa..Ni + komal/tivra + Sa↑)               │
 │                                                                              │
 │   Ocultos en instruments.js: AudioManager (Base Sound),                      │
-│   SampleAudioManager (Shrutibox Prototype, Shrutibox MKS, MKS Crossfade)     │
+│   SampleAudioManager [DEPRECADO] — iOS fallback para mks/accordion           │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -177,6 +184,15 @@ Acciones: `setSkin(id)`, `toggleSkin()`. Al importar el modulo se aplica automat
 
 La capa de audio ofrece tres motores activos e intercambiables a traves del proxy mutable `audioEngine.js`:
 
+**Shrutibox RC** (`DroneSampleAudioManager` — dual player cycling con Tone.Player):
+- Motor activo para Shrutibox RC en **todas las plataformas** (desktop, Android, iOS/iPad).
+- Porta el patron de dual player cycling de `GrainAudioManager` a `Tone.Player`, haciendo viable el efecto drone continuo en iOS donde `Tone.GrainPlayer` no funciona.
+- NO usa el loop built-in de `Tone.Player` (que produce clicks). En su lugar, cicla manualmente dos Players que se alternan con crossfade programatico de 3 s.
+- Cada Player se conecta a un nodo `Tone.Gain` individual. Al iniciar la nota, aplica un fade-in suave de 2.5 s (`initialFadeIn`). Al parar, baja el gain a 0 durante 1.5 s (`fadeOut`) antes del dispose.
+- Los assets (`/sounds-shruti-mks/`) son trims limpios de 20 s sin fades ni crossfade offline. Todo el control de fade-in, crossfade de ciclo y fade-out ocurre en runtime via `Tone.Gain`.
+- Diferencia clave con `GrainAudioManager`: sin granularidad (no hay granos ni overlap); el timbre es el sample sin procesamiento granular. La logica de ciclo es identica.
+- Ver `[docs/audio-improvements.md](audio-improvements.md)` seccion "DroneSampleAudioManager" para diagrama completo.
+
 **MKS Drone** (`GrainAudioManager` — dual player granular con crossfade):
 - Motor activo por defecto (ID: `mks-grain`).
 - Usa `Tone.GrainPlayer` con la tecnica de **dual player cycling**.
@@ -218,9 +234,10 @@ Todos los motores activos:
 
 **Motores ocultos** (disponibles en codigo, no registrados en la UI):
 - `AudioManager` (Base Sound): sintesis PolySynth fatsine, sin samples.
-- `SampleAudioManager` con `/sounds/`: Shrutibox Prototype, samples interpolados.
-- `SampleAudioManager` con `/sounds-mks/`: Shrutibox MKS, loop directo con click audible.
-- `SampleAudioManager` con `/sounds-mks-xfade/`: MKS Crossfade, samples con crossfade baked-in.
+- `SampleAudioManager` con `/sounds/`: Shrutibox Prototype, samples interpolados. **[DEPRECADO para nuevos instrumentos]**
+- `SampleAudioManager` con `/sounds-mks/`: iOS fallback para MKS Realistic. **[DEPRECADO para nuevos instrumentos]**
+- `SampleAudioManager` con `/sounds-accordion-pad/`: iOS fallback para Acordion Pad FX. **[DEPRECADO para nuevos instrumentos]**
+- `SampleAudioManager` con `/sounds-mks-xfade/`: MKS Crossfade, samples con crossfade baked-in. **[DEPRECADO para nuevos instrumentos]**
 
 **Registro de instrumentos** (`instruments.js`): define la lista de instrumentos activos, cada uno con un `id`, `name` y referencia a su `engine`. Instrumentos inactivos estan comentados en el mismo archivo.
 
@@ -462,7 +479,7 @@ useMetronomeStore.currentBeat → MetronomePanel (feedback visual)
 
 Ver [docs/audio-improvements.md](audio-improvements.md) para el historial completo:
 
-- Solucion al click en puntos de loop (dual player cycling, crossfade baked-in).
+- Solucion al click en puntos de loop (dual player cycling; crossfade baked-in para MKS Crossfade; fades en runtime para Shrutibox RC).
 - Efecto Chorus opcional con toggle ON/OFF en la UI, optimizado para bocinas de telefono, escritorio y parlantes portatiles.
 
 ---
